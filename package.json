@@ -1,0 +1,68 @@
+{
+  "name": "fuha-cafe-pos",
+  "private": true,
+  "version": "2.2.0",
+  "description": "Phần mềm quản lý bán hàng FuHa Cafe POS (Bản Offline)",
+  "main": "electron/main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\" && tsc -b && vite build",
+    "preview": "vite preview",
+    "start": "node server.js",
+    "electron:dev": "vite build && electron electron/main.js",
+    "electron:start": "electron electron/main.js",
+    "package:exe": "npm run build && electron-builder --win",
+    "package-exe": "npm run package:exe"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "lucide-react": "^1.43.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.18.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/nodemailer": "^8.0.2",
+    "@types/react": "^19.1.6",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^6.1.1",
+    "electron": "^44.3.0",
+    "electron-builder": "^26.15.3",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~6.0.2",
+    "vite": "^8.2.2"
+  },
+  "build": {
+    "appId": "com.fuhacafe.pos",
+    "productName": "FuHa Cafe POS",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "FuHa Cafe POS"
+    }
+  }
+}

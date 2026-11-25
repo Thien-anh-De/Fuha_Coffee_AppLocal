@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/
+
+# Build & packaging outputs
+dist/
+dist-ssr/
+dist_app/
+release/
+build/
+out/
+
+# Local SQLite database, WAL files & local backups
+data/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+
+# Archives & installer binaries
+*.zip
+*.exe
+*.blockmap
+*.asar
+
+# TypeScript & Vite caches
+*.tsbuildinfo
+.vite/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor & OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.sw?
+
+# Temporary / stray local files
+/{
