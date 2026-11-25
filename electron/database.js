@@ -4,6 +4,14 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import { exec } from 'node:child_process'
 import bcrypt from 'bcryptjs'
+import {
+  setupMaterialTables,
+  seedMaterialDefaults,
+  runInTransaction,
+  recordOrderMaterialConsumption,
+  reverseOrderMaterialConsumption,
+  createMaterialDbMethods,
+} from './materials.js'
 
 let dbInstance = null
 let dbFilePath = null
@@ -34,7 +42,9 @@ export function initDatabase(customPath) {
   dbInstance.exec('PRAGMA journal_mode = WAL;')
 
   setupTables(dbInstance)
+  setupMaterialTables(dbInstance)
   seedInitialData(dbInstance)
+  seedMaterialDefaults(dbInstance)
 
   return dbInstance
 }
@@ -834,43 +844,51 @@ export const dbService = {
 
   async payOrder(orderId, method, amount, cashierId) {
     const db = getDatabase()
-    const payId = 'pay-' + crypto.randomUUID()
+    return runInTransaction(db, () => {
+      const payId = 'pay-' + crypto.randomUUID()
 
-    db.prepare(`
-      INSERT INTO payments (id, order_id, method, amount, paid_at, cashier_id)
-      VALUES (?, ?, ?, ?, datetime('now', 'localtime'), ?)
-    `).run(payId, orderId, method, amount, cashierId)
+      db.prepare(`
+        INSERT INTO payments (id, order_id, method, amount, paid_at, cashier_id)
+        VALUES (?, ?, ?, ?, datetime('now', 'localtime'), ?)
+      `).run(payId, orderId, method, amount, cashierId)
 
-    const order = db.prepare("SELECT table_id FROM orders WHERE id = ?").get(orderId)
-    db.prepare("UPDATE orders SET status = 'PAID', paid_at = datetime('now', 'localtime') WHERE id = ?").run(orderId)
+      const order = db.prepare("SELECT table_id FROM orders WHERE id = ?").get(orderId)
+      db.prepare("UPDATE orders SET status = 'PAID', paid_at = datetime('now', 'localtime') WHERE id = ?").run(orderId)
 
-    if (order && order.table_id) {
-      db.prepare("UPDATE tables SET status = 'AVAILABLE' WHERE id = ?").run(order.table_id)
-    }
-    return { success: true }
+      if (order && order.table_id) {
+        db.prepare("UPDATE tables SET status = 'AVAILABLE' WHERE id = ?").run(order.table_id)
+      }
+
+      recordOrderMaterialConsumption(db, orderId, cashierId)
+      return { success: true }
+    })
   },
 
   async cancelOrder(orderId, userId, reason) {
     const db = getDatabase()
-    const order = db.prepare("SELECT table_id FROM orders WHERE id = ?").get(orderId)
+    return runInTransaction(db, () => {
+      const order = db.prepare("SELECT table_id FROM orders WHERE id = ?").get(orderId)
 
-    db.prepare(`
-      UPDATE orders
-      SET status = 'CANCELLED', cancelled_at = datetime('now', 'localtime'), cancelled_by = ?, cancel_reason = ?
-      WHERE id = ?
-    `).run(userId, reason, orderId)
+      db.prepare(`
+        UPDATE orders
+        SET status = 'CANCELLED', cancelled_at = datetime('now', 'localtime'), cancelled_by = ?, cancel_reason = ?
+        WHERE id = ?
+      `).run(userId, reason, orderId)
 
-    if (order && order.table_id) {
-      db.prepare("UPDATE tables SET status = 'AVAILABLE' WHERE id = ?").run(order.table_id)
-    }
+      if (order && order.table_id) {
+        db.prepare("UPDATE tables SET status = 'AVAILABLE' WHERE id = ?").run(order.table_id)
+      }
 
-    const auditId = 'log-' + crypto.randomUUID()
-    db.prepare(`
-      INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, details)
-      VALUES (?, ?, 'CANCEL_ORDER', 'order', ?, ?)
-    `).run(auditId, userId, orderId, reason)
+      reverseOrderMaterialConsumption(db, orderId, userId, reason)
 
-    return { success: true }
+      const auditId = 'log-' + crypto.randomUUID()
+      db.prepare(`
+        INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, details)
+        VALUES (?, ?, 'CANCEL_ORDER', 'order', ?, ?)
+      `).run(auditId, userId, orderId, reason)
+
+      return { success: true }
+    })
   },
 
   async updateOrder(orderId, updates) {
@@ -895,24 +913,28 @@ export const dbService = {
 
   async deleteOrder(orderId, userId, reason) {
     const db = getDatabase()
-    const order = db.prepare("SELECT table_id FROM orders WHERE id = ?").get(orderId)
-    
-    // Delete payments and items first due to potential foreign key constraints if any
-    db.prepare("DELETE FROM payments WHERE order_id = ?").run(orderId)
-    db.prepare("DELETE FROM order_items WHERE order_id = ?").run(orderId)
-    db.prepare("DELETE FROM orders WHERE id = ?").run(orderId)
+    return runInTransaction(db, () => {
+      const order = db.prepare("SELECT table_id FROM orders WHERE id = ?").get(orderId)
 
-    if (order && order.table_id) {
-      db.prepare("UPDATE tables SET status = 'AVAILABLE' WHERE id = ?").run(order.table_id)
-    }
+      reverseOrderMaterialConsumption(db, orderId, userId, reason || 'Xóa vĩnh viễn')
 
-    const auditId = 'log-' + crypto.randomUUID()
-    db.prepare(`
-      INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, details)
-      VALUES (?, ?, 'DELETE_ORDER', 'order', ?, ?)
-    `).run(auditId, userId, orderId, reason || 'Xóa vĩnh viễn')
+      // Delete payments and items first due to potential foreign key constraints if any
+      db.prepare("DELETE FROM payments WHERE order_id = ?").run(orderId)
+      db.prepare("DELETE FROM order_items WHERE order_id = ?").run(orderId)
+      db.prepare("DELETE FROM orders WHERE id = ?").run(orderId)
 
-    return { success: true }
+      if (order && order.table_id) {
+        db.prepare("UPDATE tables SET status = 'AVAILABLE' WHERE id = ?").run(order.table_id)
+      }
+
+      const auditId = 'log-' + crypto.randomUUID()
+      db.prepare(`
+        INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, details)
+        VALUES (?, ?, 'DELETE_ORDER', 'order', ?, ?)
+      `).run(auditId, userId, orderId, reason || 'Xóa vĩnh viễn')
+
+      return { success: true }
+    })
   },
 
 
@@ -1288,5 +1310,7 @@ export const dbService = {
       UPDATE tables SET status = 'AVAILABLE';
     `)
     return { success: true }
-  }
+  },
+
+  ...createMaterialDbMethods(getDatabase)
 }

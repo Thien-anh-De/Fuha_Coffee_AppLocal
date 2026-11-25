@@ -289,3 +289,378 @@ export interface WeekendComparison {
   weekend_ratio: number
 }
 
+// ── Materials, Multi-level Recipes & Wastage Management ───────
+export type MaterialItemType = 'RAW' | 'SEMI_FINISHED'
+export type DeductionMode = 'EXPLODE_ON_SALE' | 'BATCH_STOCK'
+export type StockMovementType =
+  | 'IMPORT'
+  | 'SALE_DEDUCTION'
+  | 'SALE_REVERSAL'
+  | 'PREP_CONSUME'
+  | 'PREP_OUTPUT'
+  | 'WASTAGE'
+  | 'STOCKTAKE_ADJUST'
+
+export interface MeasurementUnit {
+  id: string
+  name: string
+  sort_order: number
+  active: boolean
+  created_at: string
+}
+
+export interface WastageReason {
+  id: string
+  name: string
+  color: string
+  sort_order: number
+  active: boolean
+  created_at: string
+}
+
+export interface PosModifierRule {
+  id: string
+  keyword: string
+  material_id: string
+  material_name: string
+  material_unit: string
+  delta_qty: number
+  active: boolean
+  note?: string
+  created_at: string
+}
+
+export interface Material {
+  id: string
+  code?: string | null
+  name: string
+  item_type: MaterialItemType
+  unit: string
+  purchase_unit?: string | null
+  conversion_factor: number
+  yield_qty: number
+  deduction_mode: DeductionMode
+  current_stock: number
+  min_stock: number
+  unit_cost: number
+  effective_unit_cost: number
+  recipe_ingredients_count: number
+  active: boolean
+  note?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface MaterialRecipeItem {
+  id: string
+  parent_material_id: string
+  ingredient_material_id: string
+  ingredient_name: string
+  ingredient_unit: string
+  ingredient_type: MaterialItemType
+  quantity: number
+  effective_unit_cost: number
+  line_cost: number
+  note?: string | null
+}
+
+export interface MaterialRecipeDetail {
+  parent: Material
+  items: MaterialRecipeItem[]
+}
+
+export interface ProductRecipeItem {
+  id: string
+  product_id: string
+  material_id: string
+  material_name: string
+  material_unit: string
+  material_type: MaterialItemType
+  material_yield_qty: number
+  quantity: number
+  effective_unit_cost: number
+  line_cost: number
+  note?: string | null
+}
+
+export interface ProductVariantGroup {
+  variant_keyword: string
+  items: (ProductRecipeItem & { variant_keyword: string })[]
+}
+
+export interface ProductRecipeSummary {
+  product_id: string
+  product_name: string
+  category_id: string
+  category_name: string
+  price: number
+  active: boolean
+  ingredients_count: number
+  estimated_cost: number
+  food_cost_pct: number
+  ingredients: {
+    material_id: string
+    material_name: string
+    material_type: MaterialItemType
+    unit: string
+    quantity: number
+    line_cost: number
+  }[]
+  variants_count: number
+  variants: {
+    variant_keyword: string
+    ingredients_count: number
+    estimated_cost: number
+    ingredients: {
+      material_id: string
+      material_name: string
+      material_type: MaterialItemType
+      unit: string
+      quantity: number
+      line_cost: number
+    }[]
+  }[]
+}
+
+export interface BomTreeNode {
+  material_id: string
+  material_name: string
+  item_type: MaterialItemType
+  unit: string
+  deduction_mode?: DeductionMode
+  yield_qty?: number
+  quantity: number
+  depth: number
+  cost_amount: number
+  children: BomTreeNode[]
+}
+
+export interface BomSummaryEntry {
+  material_id: string
+  material_name: string
+  item_type: MaterialItemType
+  unit: string
+  deduction_mode: DeductionMode
+  quantity: number
+  cost_amount: number
+}
+
+export interface BomSimulationResult {
+  directSummary: BomSummaryEntry[]
+  intermediateSummary: BomSummaryEntry[]
+  rawLeafSummary: BomSummaryEntry[]
+  stockDeductions: BomSummaryEntry[]
+  itemBreakdowns: {
+    product_id: string | null
+    product_name: string
+    quantity: number
+    note: string
+    tree: BomTreeNode[]
+  }[]
+  totalCost: number
+}
+
+export interface PrepBatch {
+  id: string
+  material_id: string
+  material_name: string
+  unit: string
+  batch_multiplier: number
+  expected_yield_qty: number
+  actual_yield_qty: number
+  loss_qty: number
+  total_cost: number
+  inputs: {
+    material_id: string
+    material_name: string
+    unit: string
+    quantity: number
+    cost: number
+  }[]
+  created_by?: string | null
+  created_by_name?: string | null
+  note?: string | null
+  created_at: string
+}
+
+export interface WastageLog {
+  id: string
+  material_id: string
+  material_name: string
+  unit: string
+  quantity: number
+  reason_id?: string | null
+  reason_name: string
+  cost_amount: number
+  note?: string | null
+  created_by?: string | null
+  created_by_name?: string | null
+  created_at: string
+}
+
+export interface StocktakeItem {
+  id: string
+  stocktake_id: string
+  material_id: string
+  material_name: string
+  unit: string
+  system_stock: number
+  actual_stock: number
+  variance_qty: number
+  unit_cost: number
+  variance_cost: number
+  note?: string | null
+}
+
+export interface Stocktake {
+  id: string
+  title: string
+  status: 'DRAFT' | 'COMPLETED'
+  total_variance_cost: number
+  note?: string | null
+  created_by?: string | null
+  created_by_name?: string | null
+  completed_at?: string | null
+  created_at: string
+  items: StocktakeItem[]
+}
+
+export interface StockMovement {
+  id: string
+  material_id: string
+  material_name: string
+  unit: string
+  movement_type: StockMovementType
+  qty_change: number
+  balance_after: number
+  unit_cost: number
+  total_cost: number
+  reference_type?: string | null
+  reference_id?: string | null
+  created_by?: string | null
+  created_by_name?: string | null
+  note?: string | null
+  created_at: string
+}
+
+export interface MaterialLedgerRow {
+  material_id: string
+  material_name: string
+  item_type: MaterialItemType
+  unit: string
+  deduction_mode: DeductionMode
+  opening_stock: number
+  imported_qty: number
+  sold_qty: number
+  prep_consumed_qty: number
+  prep_output_qty: number
+  wastage_qty: number
+  stocktake_adjust_qty: number
+  closing_stock: number
+  sold_cost: number
+  wastage_cost: number
+  stocktake_loss_cost: number
+}
+
+export interface MaterialWastageReport {
+  range: { from: string; to: string }
+  summary: {
+    net_revenue: number
+    paid_orders: number
+    total_sale_material_cost: number
+    total_wastage_cost: number
+    total_prep_loss_cost: number
+    total_prep_loss_qty: number
+    total_stocktake_loss_cost: number
+  }
+  sold_products: {
+    product_name: string
+    quantity: number
+    cost_amount: number
+  }[]
+  direct_consumption: {
+    material_id: string
+    material_name: string
+    material_type: MaterialItemType
+    unit: string
+    total_qty: number
+  }[]
+  exploded_raw_consumption: {
+    material_id: string
+    material_name: string
+    material_type: MaterialItemType
+    unit: string
+    total_qty: number
+    total_cost: number
+  }[]
+  inventory_ledger: MaterialLedgerRow[]
+  wastage_by_reason: {
+    reason_name: string
+    count: number
+    total_cost: number
+  }[]
+  prep_batches: PrepBatch[]
+}
+
+export interface MaterialConsumptionSummary {
+  range: { from: string; to: string }
+  summary: {
+    paid_orders: number
+    total_cups_sold: number
+    net_revenue: number
+    raw_materials_count: number
+    total_sale_cost: number
+    total_extra_wastage_cost: number
+    total_cost: number
+  }
+  raw_consumption: {
+    material_id: string
+    material_name: string
+    unit: string
+    sale_qty: number
+    extra_wastage_qty: number
+    total_qty: number
+    sale_cost: number
+    extra_wastage_cost: number
+    total_cost: number
+  }[]
+  direct_consumption: {
+    material_id: string
+    material_name: string
+    material_type: MaterialItemType
+    unit: string
+    sale_qty: number
+    extra_wastage_qty: number
+    total_qty: number
+  }[]
+  sold_products: {
+    product_id: string | null
+    product_name: string
+    quantity: number
+    has_recipe: boolean
+    cost_amount: number
+    direct_materials: {
+      material_id: string
+      material_name: string
+      material_type: MaterialItemType
+      unit: string
+      quantity: number
+    }[]
+    raw_materials: {
+      material_id: string
+      material_name: string
+      unit: string
+      quantity: number
+      cost_amount: number
+    }[]
+  }[]
+  unconfigured_products: {
+    product_id: string | null
+    product_name: string
+    quantity: number
+    has_recipe: boolean
+    cost_amount: number
+  }[]
+  extra_wastage_logs: WastageLog[]
+}
+

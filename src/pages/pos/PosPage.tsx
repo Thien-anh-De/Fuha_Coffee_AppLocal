@@ -7,7 +7,7 @@ import { categoryService } from '@/services/categoryService'
 import { productService } from '@/services/productService'
 import { orderService } from '@/services/orderService'
 import { ToastContainer, LoadingSpinner, EmptyState, Modal } from '@/components/ui'
-import { formatCurrency, removeVietnameseTones, getAcronym } from '@/utils/helpers'
+import { formatCurrency, matchSearchWithAcronym } from '@/utils/helpers'
 import type { CoffeeTable, Category, Product, Order, OrderItem, CartItem, ToppingOption } from '@/types'
 import {
   CupSoda,
@@ -84,6 +84,7 @@ export default function PosPage() {
   const [editBasePrice, setEditBasePrice] = useState<number>(0)
   const [selectedIce, setSelectedIce] = useState<string>('100% Đá (chuẩn)')
   const [selectedSugar, setSelectedSugar] = useState<string>('100% Đường (chuẩn)')
+  const [selectedSize, setSelectedSize] = useState<'M' | 'L'>('M')
   const [selectedToppings, setSelectedToppings] = useState<ToppingOption[]>([])
   const [selectedExtras, setSelectedExtras] = useState<string[]>([])
   const [customNoteText, setCustomNoteText] = useState<string>('')
@@ -204,11 +205,22 @@ export default function PosPage() {
     }
   }
 
-  // Dynamic available toppings (DB products)
+  // Dynamic available toppings (DB products) & Size L surcharge
+  const toppingCategory = categories.find((c) => c.name.toLowerCase().includes('topping'))
+  const sizeLToppingProduct = products.find(
+    (p) => toppingCategory && p.category_id === toppingCategory.id && p.active && /^size\s*l$/i.test(p.name.trim())
+  )
+  const sizeLSurcharge = sizeLToppingProduct ? sizeLToppingProduct.price : 10000
+
   const availableToppings: ToppingOption[] = (() => {
-    const toppingCat = categories.find((c) => c.name.toLowerCase().includes('topping'))
     return products
-      .filter((p) => toppingCat && p.category_id === toppingCat.id && p.active)
+      .filter(
+        (p) =>
+          toppingCategory &&
+          p.category_id === toppingCategory.id &&
+          p.active &&
+          !/^size\s*l$/i.test(p.name.trim())
+      )
       .map((p) => ({ id: p.id, name: p.name, price: p.price }))
   })()
 
@@ -223,6 +235,7 @@ export default function PosPage() {
 
   // Build clean note text
   const buildNote = (
+    size: 'M' | 'L',
     ice: string,
     sugar: string,
     extras: string[],
@@ -231,6 +244,10 @@ export default function PosPage() {
     isDrink: boolean
   ): string => {
     const parts: string[] = []
+
+    if (isDrink && size === 'L') {
+      parts.push(`Size L (+${formatCurrency(sizeLSurcharge)})`)
+    }
 
     if (toppings.length > 0) {
       const topStr = toppings.map((t) => `+ ${t.name} (+${formatCurrency(t.price)})`).join(', ')
@@ -268,17 +285,20 @@ export default function PosPage() {
     setEditQuantity(item.quantity)
 
     const note = item.note || ''
+    const hasSizeL = /\bsize\s*l\b/i.test(note)
     const foundIce = ICE_OPTIONS.find((o) => note.includes(o)) || '100% Đá (chuẩn)'
     const foundSugar = SUGAR_OPTIONS.find((o) => note.includes(o)) || '100% Đường (chuẩn)'
     const foundExtras = EXTRA_OPTIONS.filter((e) => note.includes(e))
     const foundToppings = availableToppings.filter((t) => note.toLowerCase().includes(t.name.toLowerCase()))
 
+    setSelectedSize(hasSizeL ? 'L' : 'M')
     setSelectedIce(foundIce)
     setSelectedSugar(foundSugar)
     setSelectedExtras(foundExtras)
     setSelectedToppings(foundToppings)
 
     let cleaned = note
+    cleaned = cleaned.replace(/\+?\s*size\s*l\s*(\(\+[^)]+\))?/gi, '')
     ICE_OPTIONS.forEach((o) => { cleaned = cleaned.replace(o, '') })
     SUGAR_OPTIONS.forEach((o) => { cleaned = cleaned.replace(o, '') })
     EXTRA_OPTIONS.forEach((o) => { cleaned = cleaned.replace(o, '') })
@@ -287,6 +307,17 @@ export default function PosPage() {
     })
     cleaned = cleaned.replace(/[•|]/g, ' ').replace(/\s+/g, ' ').trim()
     setCustomNoteText(cleaned)
+  }
+
+  // Select cup size (M/L): updates selectedSize and adjusts editUnitPrice
+  const handleSelectSize = (size: 'M' | 'L') => {
+    if (size === selectedSize) return
+    setSelectedSize(size)
+    if (size === 'L') {
+      setEditUnitPrice((prev) => prev + sizeLSurcharge)
+    } else {
+      setEditUnitPrice((prev) => Math.max(0, prev - sizeLSurcharge))
+    }
   }
 
   // Toggle topping in edit modal: updates toppings and adjusts editUnitPrice
@@ -318,6 +349,7 @@ export default function PosPage() {
     const prod = products.find((p) => p.id === editingOrderItem.product_id)
     const isDrink = isDrinkCategory(prod?.category_id)
     const note = buildNote(
+      selectedSize,
       selectedIce,
       selectedSugar,
       selectedExtras,
@@ -560,13 +592,7 @@ export default function PosPage() {
 
   const filteredProducts = products.filter((p) => {
     if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase()
-      const qNoTone = removeVietnameseTones(q)
-      const name = p.name.toLowerCase()
-      const nameNoTone = removeVietnameseTones(p.name)
-      const acronym = getAcronym(p.name)
-
-      const matchesSearch = name.includes(q) || nameNoTone.includes(qNoTone) || acronym.includes(qNoTone)
+      const matchesSearch = matchSearchWithAcronym(p.name, searchQuery)
       if (!matchesSearch) return false
 
       if (activeCategory !== 'all' && p.category_id !== activeCategory) {
@@ -580,15 +606,9 @@ export default function PosPage() {
 
   // Danh sách món gợi ý khi tìm kiếm xổ xuống (tìm kiếm trên toàn bộ menu món)
   const searchSuggestions = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase()
+    const q = searchQuery.trim()
     if (!q) return []
-    const qNoTone = removeVietnameseTones(q)
-    return products.filter((p) => {
-      const name = p.name.toLowerCase()
-      const nameNoTone = removeVietnameseTones(p.name)
-      const acronym = getAcronym(p.name)
-      return name.includes(q) || nameNoTone.includes(qNoTone) || acronym.includes(qNoTone)
-    })
+    return products.filter((p) => matchSearchWithAcronym(p.name, q))
   }, [products, searchQuery])
 
   // Đóng dropdown tìm kiếm khi nhấp chuột ra ngoài
@@ -1654,7 +1674,10 @@ export default function PosPage() {
                   className="btn btn-secondary btn-sm"
                   onClick={() => {
                     const toppingTotal = selectedToppings.reduce((sum, t) => sum + t.price, 0)
-                    setEditUnitPrice(editBasePrice + toppingTotal)
+                    const prod = products.find((p) => p.id === editingOrderItem.product_id)
+                    const isDrink = isDrinkCategory(prod?.category_id)
+                    const sizeExtra = isDrink && selectedSize === 'L' ? sizeLSurcharge : 0
+                    setEditUnitPrice(editBasePrice + toppingTotal + sizeExtra)
                   }}
                   style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem', height: '34px' }}
                   title="Khôi phục giá chuẩn theo menu + topping"
@@ -1663,6 +1686,63 @@ export default function PosPage() {
                 </button>
               )}
             </div>
+
+            {/* Row 1.5: Size Cốc (Drinks only - đặt trên Topping) */}
+            {(() => {
+              const prod = products.find((p) => p.id === editingOrderItem.product_id)
+              if (!isDrinkCategory(prod?.category_id)) return null
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', paddingTop: '0.15rem' }}>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 700, minWidth: '72px', whiteSpace: 'nowrap', color: 'var(--color-text-secondary)' }}>
+                    Size cốc:
+                  </span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.55rem', flex: 1 }}>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectSize('M')}
+                      style={{
+                        padding: '0.4rem 0.95rem',
+                        borderRadius: 'var(--radius-md)',
+                        border: selectedSize === 'M' ? '1.5px solid var(--color-coffee-600)' : '1px solid var(--color-border)',
+                        background: selectedSize === 'M' ? 'var(--color-coffee-600)' : '#ffffff',
+                        color: selectedSize === 'M' ? '#ffffff' : 'var(--color-text-primary)',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        fontSize: '0.85rem',
+                        fontWeight: selectedSize === 'M' ? 700 : 500,
+                        height: '36px',
+                      }}
+                    >
+                      <span>Size M (chuẩn)</span>
+                      {selectedSize === 'M' && <Check size={14} color="#ffffff" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectSize('L')}
+                      style={{
+                        padding: '0.4rem 0.95rem',
+                        borderRadius: 'var(--radius-md)',
+                        border: selectedSize === 'L' ? '1.5px solid var(--color-coffee-600)' : '1px solid var(--color-border)',
+                        background: selectedSize === 'L' ? 'var(--color-coffee-600)' : '#ffffff',
+                        color: selectedSize === 'L' ? '#ffffff' : 'var(--color-text-primary)',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        fontSize: '0.85rem',
+                        fontWeight: selectedSize === 'L' ? 700 : 500,
+                        height: '36px',
+                      }}
+                    >
+                      <span>Size L (+{sizeLSurcharge / 1000}k)</span>
+                      {selectedSize === 'L' && <Check size={14} color="#ffffff" />}
+                    </button>
+                  </div>
+                </div>
+              )
+            })()}
 
             {/* Row 2: Topping */}
             {availableToppings.length > 0 && (

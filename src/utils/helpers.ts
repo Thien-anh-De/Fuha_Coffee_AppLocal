@@ -110,6 +110,75 @@ export function getAcronym(str: string): string {
     .join('')
 }
 
+/**
+ * Kiểm tra chuỗi con không liền kề (subsequence) theo đúng thứ tự
+ * VD: "cpg" là chuỗi con của "ccppg" (Cốt cà phê phin gộp)
+ */
+export function isSubsequence(needle: string, haystack: string): boolean {
+  if (!needle) return true
+  if (needle.length > haystack.length) return false
+  let nIdx = 0
+  for (let hIdx = 0; hIdx < haystack.length; hIdx++) {
+    if (haystack[hIdx] === needle[nIdx]) {
+      nIdx++
+      if (nIdx === needle.length) return true
+    }
+  }
+  return false
+}
+
+/**
+ * Tìm kiếm tiếng Việt thông minh & viết tắt:
+ * - Khớp trực tiếp có dấu hoặc không dấu (VD: "cà phê" hoặc "ca phe")
+ * - Khớp viết tắt chữ cái đầu (VD: "cfn" hoặc "cpn" cho "Cà phê nâu", "st" cho "Sữa tươi", "sd" cho "Sữa đặc", "km" cho "Kem muối")
+ * - Hỗ trợ alias "cf" / "f" <-> "ph" đặc trưng đồ uống
+ * - Hỗ trợ chuỗi con viết tắt (VD: "cpg" khớp "ccppg" của "Cốt cà phê phin gộp")
+ * - Hỗ trợ nhiều từ khóa con cách nhau bởi dấu cách (VD: "cf nau", "sua dac")
+ */
+export function matchSearchWithAcronym(target: string, query: string): boolean {
+  if (!query || !query.trim()) return true
+  if (!target) return false
+
+  const q = query.trim().toLowerCase()
+  const qNoTone = removeVietnameseTones(q)
+  const targetLower = target.toLowerCase()
+  const targetNoTone = removeVietnameseTones(target)
+
+  // 1. Khớp chuỗi trực tiếp
+  if (targetLower.includes(q) || targetNoTone.includes(qNoTone)) return true
+
+  // 2. Tách từ & sinh chữ cái đầu
+  const words = targetNoTone.split(/[\s\-_/.,+()]+/).filter(Boolean)
+  const initialsStandard = words.map((w) => w.charAt(0)).join('')
+  const initialsWithF = words.map((w) => (w.startsWith('ph') ? 'f' : w.charAt(0))).join('')
+
+  if (
+    initialsStandard.includes(qNoTone) ||
+    initialsWithF.includes(qNoTone) ||
+    isSubsequence(qNoTone, initialsStandard) ||
+    isSubsequence(qNoTone, initialsWithF)
+  ) {
+    return true
+  }
+
+  // 3. Khớp nhiều từ khóa con (VD: "cf nau")
+  const queryTokens = qNoTone.split(/\s+/).filter(Boolean)
+  if (queryTokens.length > 1) {
+    const allMatch = queryTokens.every((tok) => {
+      return (
+        targetNoTone.includes(tok) ||
+        initialsStandard.includes(tok) ||
+        initialsWithF.includes(tok) ||
+        isSubsequence(tok, initialsStandard) ||
+        isSubsequence(tok, initialsWithF)
+      )
+    })
+    if (allMatch) return true
+  }
+
+  return false
+}
+
 export interface GoldenHourItem {
   hour: number
   label: string

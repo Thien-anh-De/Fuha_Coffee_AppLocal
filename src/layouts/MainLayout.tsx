@@ -20,6 +20,7 @@ import {
   Lock,
   ZoomIn,
   ZoomOut,
+  Scale,
 } from 'lucide-react'
 import { useZoom } from '@/hooks/useZoom'
 import type { ReactNode } from 'react'
@@ -30,6 +31,7 @@ const navItems: { to: string; icon: typeof ShoppingCart; label: string; roles: U
   { to: '/pos', icon: ShoppingCart, label: 'Bán hàng', roles: ['OWNER', 'MANAGER', 'CASHIER'] },
   { to: '/tables', icon: Grid3X3, label: 'Quản lý bàn', roles: ['OWNER', 'MANAGER'] },
   { to: '/products', icon: Package, label: 'Quản lý món', roles: ['OWNER', 'MANAGER'] },
+  { to: '/materials', icon: Scale, label: 'Hao hụt nguyên liệu', roles: ['OWNER', 'MANAGER'] },
   { to: '/invoices', icon: Receipt, label: 'Hóa đơn', roles: ['OWNER', 'MANAGER', 'CASHIER'] },
   { to: '/reports', icon: BarChart3, label: 'Doanh thu', roles: ['OWNER', 'MANAGER'] },
   { to: '/users', icon: Users, label: 'Nhân viên', roles: ['OWNER', 'MANAGER'] },

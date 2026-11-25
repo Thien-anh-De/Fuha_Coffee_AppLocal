@@ -2,15 +2,19 @@ import { useState, useEffect, useCallback } from 'react'
 import { useToast } from '@/hooks/useToast'
 import { productService } from '@/services/productService'
 import { categoryService } from '@/services/categoryService'
+import { materialService } from '@/services/materialService'
 import { ToastContainer, Modal, EmptyState, LoadingSpinner, ConfirmDialog } from '@/components/ui'
-import { formatCurrency } from '@/utils/helpers'
-import type { Product, Category } from '@/types'
-import { Package, Plus, Edit2, Eye, EyeOff, FolderPlus, Search, Trash2 } from 'lucide-react'
+import { RecipeEditorModal, type RecipeTarget } from '@/pages/materials/RecipeEditorModal'
+import { formatCurrency, matchSearchWithAcronym } from '@/utils/helpers'
+import type { Product, Category, ProductRecipeSummary } from '@/types'
+import { Package, Plus, Edit2, Eye, EyeOff, FolderPlus, Search, X, Trash2, FlaskConical } from 'lucide-react'
 
 export default function ProductsPage() {
   const { toasts, success, error: toastError, removeToast } = useToast()
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [recipesSummary, setRecipesSummary] = useState<ProductRecipeSummary[]>([])
+  const [recipeTarget, setRecipeTarget] = useState<RecipeTarget | null>(null)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterCat, setFilterCat] = useState<string>('')
@@ -33,9 +37,14 @@ export default function ProductsPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [p, c] = await Promise.all([productService.getAll(), categoryService.getAll()])
+      const [p, c, rSum] = await Promise.all([
+        productService.getAll(),
+        categoryService.getAll(),
+        materialService.getAllProductRecipesSummary().catch(() => []),
+      ])
       setProducts(p)
       setCategories(c)
+      setRecipesSummary(rSum)
     } catch {
       toastError('Không thể tải dữ liệu')
     } finally {
@@ -159,7 +168,7 @@ export default function ProductsPage() {
   }
 
   const filtered = products.filter((p) => {
-    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase())
+    const matchSearch = matchSearchWithAcronym(p.name, search)
     const matchCat = !filterCat || p.category_id === filterCat
     return matchSearch && matchCat
   })
@@ -200,11 +209,30 @@ export default function ProductsPage() {
           <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
           <input
             className="input"
-            placeholder="Tìm kiếm món..."
+            placeholder="Tìm món (gõ cfn, cf, st, trà me)..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ paddingLeft: '2.25rem' }}
+            style={{ paddingLeft: '2.25rem', paddingRight: search ? '2rem' : '0.75rem' }}
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              style={{
+                position: 'absolute',
+                right: '0.5rem',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--color-text-muted)',
+              }}
+              title="Xóa tìm kiếm"
+            >
+              <X size={15} />
+            </button>
+          )}
         </div>
         <select className="select" value={filterCat} onChange={(e) => setFilterCat(e.target.value)} style={{ width: 200 }}>
           <option value="">Tất cả danh mục</option>
@@ -225,16 +253,39 @@ export default function ProductsPage() {
                 <th>Tên món</th>
                 <th>Danh mục</th>
                 <th>Giá</th>
+                <th>Công thức nguyên liệu</th>
                 <th>Trạng thái</th>
                 <th style={{ textAlign: 'right' }}>Thao tác</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((p) => (
+              {filtered.map((p) => {
+                const rec = recipesSummary.find((r) => r.product_id === p.id)
+                return (
                 <tr key={p.id}>
                   <td style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{p.name}</td>
                   <td>{p.category?.name ?? '—'}</td>
                   <td style={{ color: 'var(--color-coffee-400)', fontWeight: 500 }}>{formatCurrency(p.price)}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.78rem' }}
+                      onClick={() => setRecipeTarget({ kind: 'PRODUCT', id: p.id, name: p.name, price: p.price })}
+                      title="Thiết lập công thức nguyên vật liệu cho món này"
+                    >
+                      <FlaskConical size={13} />
+                      {rec && rec.ingredients_count > 0 ? (
+                        <span>
+                          {rec.ingredients_count} TP
+                          {rec.variants_count > 0 ? ` (+${rec.variants_count} size)` : ''}
+                          {rec.estimated_cost > 0 ? <> · <strong>{formatCurrency(rec.estimated_cost)}</strong></> : null}
+                        </span>
+                      ) : (
+                        <span style={{ color: 'var(--color-text-muted)' }}>+ Gắn công thức</span>
+                      )}
+                    </button>
+                  </td>
                   <td>
                     <span className={`badge ${p.active ? 'badge-success' : 'badge-danger'}`}>
                       {p.active ? 'Đang bán' : 'Đã ẩn'}
@@ -254,7 +305,8 @@ export default function ProductsPage() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -360,6 +412,16 @@ export default function ProductsPage() {
         message={`Bạn có chắc chắn muốn xóa vĩnh viễn món "${confirmDelete?.name}"? Các đơn hàng cũ chứa món này có thể bị ảnh hưởng phần hiển thị chi tiết.`}
         onConfirm={handleDeleteProduct}
         onCancel={() => setConfirmDelete(null)}
+      />
+
+      <RecipeEditorModal
+        open={!!recipeTarget}
+        initialTarget={recipeTarget}
+        allProductsSummary={recipesSummary}
+        onClose={() => setRecipeTarget(null)}
+        onSaved={loadData}
+        onSuccess={success}
+        onError={toastError}
       />
     </div>
   )

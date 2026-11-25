@@ -10,6 +10,7 @@ import TablesPage from '@/pages/tables/TablesPage'
 import InvoicesPage from '@/pages/invoices/InvoicesPage'
 import ReportsPage from '@/pages/reports/ReportsPage'
 import OverviewPage from '@/pages/overview/OverviewPage'
+import MaterialsPage from '@/pages/materials/MaterialsPage'
 import UsersPage from '@/pages/users/UsersPage'
 import PrinterPage from '@/pages/printer/PrinterPage'
 import SettingsPage from '@/pages/settings/SettingsPage'
@@ -99,6 +100,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute roles={['OWNER', 'MANAGER']}>
             <ProductsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/materials"
+        element={
+          <ProtectedRoute roles={['OWNER', 'MANAGER']}>
+            <MaterialsPage />
           </ProtectedRoute>
         }
       />
