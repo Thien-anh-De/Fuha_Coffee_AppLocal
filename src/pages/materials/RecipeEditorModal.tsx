@@ -253,6 +253,8 @@ export function RecipeEditorModal({
   const [rows, setRows] = useState<RecipeRowDraft[]>([])
   const [baseRowsCache, setBaseRowsCache] = useState<RecipeRowDraft[]>([])
   const [variants, setVariants] = useState<ProductVariantGroup[]>([])
+  const [variantDrafts, setVariantDrafts] = useState<Record<string, RecipeRowDraft[]>>({})
+  const [loadedVariantKeywords, setLoadedVariantKeywords] = useState<string[]>([])
   const [activeVariantKeyword, setActiveVariantKeyword] = useState<string | null>(null)
   const [showNewVariantInput, setShowNewVariantInput] = useState(false)
   const [newVariantName, setNewVariantName] = useState('')
@@ -291,24 +293,27 @@ export function RecipeEditorModal({
           }))
           setBaseRowsCache(baseDrafts)
           setVariants(varGroups)
+          const draftsMap: Record<string, RecipeRowDraft[]> = {}
+          for (const vg of varGroups) {
+            draftsMap[vg.variant_keyword] = vg.items.map((it) => ({
+              material_id: it.material_id,
+              quantity: String(it.quantity),
+              note: it.note || '',
+            }))
+          }
+          setVariantDrafts(draftsMap)
+          setLoadedVariantKeywords(varGroups.map((vg) => vg.variant_keyword))
           setActiveVariantKeyword(targetVariantKeyword)
 
           if (targetVariantKeyword) {
-            const matchedVar = varGroups.find((v) => v.variant_keyword === targetVariantKeyword)
-            setRows(
-              matchedVar
-                ? matchedVar.items.map((it) => ({
-                    material_id: it.material_id,
-                    quantity: String(it.quantity),
-                    note: it.note || '',
-                  }))
-                : baseDrafts.map((b) => ({ ...b }))
-            )
+            setRows(draftsMap[targetVariantKeyword] ? draftsMap[targetVariantKeyword].map((d) => ({ ...d })) : baseDrafts.map((b) => ({ ...b })))
           } else {
             setRows(baseDrafts)
           }
         } else {
           setVariants([])
+          setVariantDrafts({})
+          setLoadedVariantKeywords([])
           setActiveVariantKeyword(null)
           const detail = await materialService.getMaterialRecipe(target.id)
           setYieldQty(String(detail.parent.yield_qty || 1))
@@ -344,6 +349,8 @@ export function RecipeEditorModal({
       setRows([])
       setBaseRowsCache([])
       setVariants([])
+      setVariantDrafts({})
+      setLoadedVariantKeywords([])
       setActiveVariantKeyword(null)
       setQuickSearch('')
       setShowQuickDropdown(false)
@@ -420,27 +427,28 @@ export function RecipeEditorModal({
   }, [showQuickDropdown])
 
   const handleSwitchVariantTab = (kw: string | null) => {
+    if (kw === activeVariantKeyword) return
+
+    const nextBase = activeVariantKeyword === null ? rows : baseRowsCache
+    const nextVariantDrafts =
+      activeVariantKeyword !== null
+        ? { ...variantDrafts, [activeVariantKeyword]: rows }
+        : variantDrafts
+
     if (activeVariantKeyword === null) {
       setBaseRowsCache(rows)
+    } else {
+      setVariantDrafts(nextVariantDrafts)
     }
+
     setActiveVariantKeyword(kw)
     setShowNewVariantInput(false)
     if (kw === null) {
-      setRows(activeVariantKeyword === null ? rows : baseRowsCache)
+      setRows(nextBase)
+    } else if (nextVariantDrafts[kw]) {
+      setRows(nextVariantDrafts[kw])
     } else {
-      const matched = variants.find((v) => v.variant_keyword === kw)
-      if (matched) {
-        setRows(
-          matched.items.map((it) => ({
-            material_id: it.material_id,
-            quantity: String(it.quantity),
-            note: it.note || '',
-          }))
-        )
-      } else {
-        const source = activeVariantKeyword === null ? rows : baseRowsCache
-        setRows(source.map((r) => ({ ...r })))
-      }
+      setRows(nextBase.map((r) => ({ ...r })))
     }
   }
 
@@ -450,20 +458,32 @@ export function RecipeEditorModal({
       onError('Vui lòng nhập từ khóa biến thể (VD: Size L)')
       return
     }
-    const sourceBase = activeVariantKeyword === null ? rows : baseRowsCache
+    const nextBase = activeVariantKeyword === null ? rows : baseRowsCache
+    const nextVariantDrafts =
+      activeVariantKeyword !== null
+        ? { ...variantDrafts, [activeVariantKeyword]: rows }
+        : { ...variantDrafts }
+
     if (activeVariantKeyword === null) {
       setBaseRowsCache(rows)
     }
-    if (!variants.some((v) => v.variant_keyword.toLowerCase() === kw.toLowerCase())) {
-      setVariants((prev) => [...prev, { variant_keyword: kw, items: [] }])
-    }
+
     const existing = variants.find((v) => v.variant_keyword.toLowerCase() === kw.toLowerCase())
-    setActiveVariantKeyword(existing ? existing.variant_keyword : kw)
-    setRows(
-      existing && existing.items.length > 0
-        ? existing.items.map((it) => ({ material_id: it.material_id, quantity: String(it.quantity), note: it.note || '' }))
-        : sourceBase.map((r) => ({ ...r }))
-    )
+    const resolvedKw = existing ? existing.variant_keyword : kw
+
+    if (!existing) {
+      setVariants((prev) => [...prev, { variant_keyword: resolvedKw, items: [] }])
+    }
+
+    const targetRows =
+      nextVariantDrafts[resolvedKw] && nextVariantDrafts[resolvedKw].length > 0
+        ? nextVariantDrafts[resolvedKw]
+        : nextBase.map((r) => ({ ...r }))
+
+    nextVariantDrafts[resolvedKw] = targetRows
+    setVariantDrafts(nextVariantDrafts)
+    setActiveVariantKeyword(resolvedKw)
+    setRows(targetRows)
     setShowNewVariantInput(false)
     setNewVariantName('')
   }
@@ -543,48 +563,94 @@ export function RecipeEditorModal({
 
   const handleSave = async () => {
     if (!currentTarget) return
-    for (const r of rows) {
-      if (!r.material_id) {
-        onError('Vui lòng chọn nguyên vật liệu cho tất cả các dòng')
-        return
+
+    const validateRows = (list: RecipeRowDraft[], label?: string): boolean => {
+      for (const r of list) {
+        if (!r.material_id) {
+          onError(`${label ? `[${label}] ` : ''}Vui lòng chọn nguyên vật liệu cho tất cả các dòng`)
+          return false
+        }
+        const q = Number(r.quantity)
+        if (!Number.isFinite(q) || q <= 0) {
+          const m = materialMap.get(r.material_id)
+          onError(`${label ? `[${label}] ` : ''}Định lượng của "${m?.name || 'nguyên liệu'}" phải lớn hơn 0`)
+          return false
+        }
       }
-      const q = Number(r.quantity)
-      if (!Number.isFinite(q) || q <= 0) {
-        const m = materialMap.get(r.material_id)
-        onError(`Định lượng của "${m?.name || 'nguyên liệu'}" phải lớn hơn 0`)
-        return
-      }
+      return true
     }
 
-    setSaving(true)
-    try {
-      if (currentTarget.kind === 'PRODUCT') {
-        const payload = rows.map((r) => ({
+    if (currentTarget.kind === 'PRODUCT') {
+      const finalBaseRows = activeVariantKeyword === null ? rows : baseRowsCache
+      const finalVariantDrafts: Record<string, RecipeRowDraft[]> =
+        activeVariantKeyword !== null
+          ? { ...variantDrafts, [activeVariantKeyword]: rows }
+          : { ...variantDrafts }
+
+      if (!validateRows(finalBaseRows, 'Công thức chuẩn')) return
+      for (const [kw, vRows] of Object.entries(finalVariantDrafts)) {
+        if (vRows.length > 0 && !validateRows(vRows, kw)) return
+      }
+
+      setSaving(true)
+      try {
+        const basePayload = finalBaseRows.map((r) => ({
           material_id: r.material_id,
           quantity: Number(r.quantity),
           note: r.note || undefined,
         }))
-        if (activeVariantKeyword) {
-          await materialService.saveProductVariantRecipe(currentTarget.id, activeVariantKeyword, payload)
-          onSuccess(`Đã lưu công thức "${activeVariantKeyword}" cho món "${currentTarget.name}"`)
-        } else {
-          await materialService.saveProductRecipe(currentTarget.id, payload)
-          onSuccess(`Đã lưu công thức cho món "${currentTarget.name}"`)
+        await materialService.saveProductRecipe(currentTarget.id, basePayload)
+
+        const savedVariants: string[] = []
+        for (const [kw, vRows] of Object.entries(finalVariantDrafts)) {
+          if (vRows.length > 0) {
+            const vPayload = vRows.map((r) => ({
+              material_id: r.material_id,
+              quantity: Number(r.quantity),
+              note: r.note || undefined,
+            }))
+            await materialService.saveProductVariantRecipe(currentTarget.id, kw, vPayload)
+            savedVariants.push(kw)
+          } else if (loadedVariantKeywords.includes(kw)) {
+            await materialService.deleteProductVariant(currentTarget.id, kw)
+          }
         }
-      } else {
-        const y = Number(yieldQty)
-        if (!Number.isFinite(y) || y <= 0) {
-          onError('Sản lượng thành phẩm thu được của 1 mẻ phải lớn hơn 0')
-          setSaving(false)
-          return
-        }
-        await materialService.saveMaterialRecipe(
-          currentTarget.id,
-          rows.map((r) => ({ ingredient_material_id: r.material_id, quantity: Number(r.quantity), note: r.note || undefined })),
-          y
+
+        onSuccess(
+          savedVariants.length > 0
+            ? `Đã lưu công thức (Chuẩn & ${savedVariants.join(', ')}) cho món "${currentTarget.name}"`
+            : `Đã lưu công thức cho món "${currentTarget.name}"`
         )
-        onSuccess(`Đã lưu công thức mẻ cho "${currentTarget.name}"`)
+        onSaved()
+        if (stack.length > 1) {
+          handleBackStack()
+        } else {
+          onClose()
+        }
+      } catch (err: unknown) {
+        onError(err instanceof Error ? err.message : 'Không thể lưu công thức')
+      } finally {
+        setSaving(false)
       }
+      return
+    }
+
+    if (!validateRows(rows)) return
+
+    setSaving(true)
+    try {
+      const y = Number(yieldQty)
+      if (!Number.isFinite(y) || y <= 0) {
+        onError('Sản lượng thành phẩm thu được của 1 mẻ phải lớn hơn 0')
+        setSaving(false)
+        return
+      }
+      await materialService.saveMaterialRecipe(
+        currentTarget.id,
+        rows.map((r) => ({ ingredient_material_id: r.material_id, quantity: Number(r.quantity), note: r.note || undefined })),
+        y
+      )
+      onSuccess(`Đã lưu công thức mẻ cho "${currentTarget.name}"`)
       onSaved()
       if (stack.length > 1) {
         handleBackStack()
@@ -1053,7 +1119,7 @@ export function RecipeEditorModal({
               Đóng
             </button>
             <button type="button" className="btn btn-primary" disabled={saving} onClick={handleSave}>
-              {saving ? 'Đang lưu...' : activeVariantKeyword ? `Lưu công thức ${activeVariantKeyword}` : 'Lưu công thức'}
+              {saving ? 'Đang lưu...' : 'Lưu công thức'}
             </button>
           </div>
         </div>

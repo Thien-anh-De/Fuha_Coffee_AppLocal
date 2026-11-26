@@ -16,6 +16,8 @@ import {
   Sparkles,
   FlaskConical,
   CupSoda,
+  Download,
+  Upload,
 } from 'lucide-react'
 
 interface Props {
@@ -201,6 +203,42 @@ export function MaterialsSetupTab({
     }
   }
 
+  const handleExportJson = async () => {
+    try {
+      const data = await materialService.exportRecipesJson()
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'default-recipes.json'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      onSuccess('Đã xuất file default-recipes.json')
+    } catch (err: unknown) {
+      onError(err instanceof Error ? err.message : 'Không thể xuất file JSON')
+    }
+  }
+
+  const handleImportJson = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    try {
+      const text = await file.text()
+      const parsed = JSON.parse(text)
+      const res = await materialService.importRecipesJson(parsed)
+      onSuccess(
+        `Đã nhập JSON: +${res.addedMaterials} nguyên liệu, +${res.addedMaterialRecipes} công thức mẻ, +${res.addedProductRecipes} công thức món`
+      )
+      onChanged()
+      loadData()
+    } catch (err: unknown) {
+      onError(err instanceof Error ? err.message : 'File JSON không hợp lệ hoặc lỗi khi nhập')
+    }
+  }
+
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
@@ -328,6 +366,13 @@ export function MaterialsSetupTab({
             </div>
 
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer', margin: 0 }} title="Nhập nguyên liệu & công thức từ file JSON">
+                <Upload size={14} /> Nhập JSON
+                <input type="file" accept=".json,application/json" onChange={handleImportJson} style={{ display: 'none' }} />
+              </label>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={handleExportJson} title="Xuất toàn bộ nguyên liệu & công thức ra file default-recipes.json">
+                <Download size={14} /> Xuất JSON
+              </button>
               <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowUnitsModal(true)}>
                 <Ruler size={14} /> Đơn vị ({units.length})
               </button>

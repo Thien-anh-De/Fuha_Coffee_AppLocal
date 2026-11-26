@@ -9,6 +9,17 @@ export function roundQty(val) {
 }
 
 /**
+ * Kiểm tra userId có tồn tại trong bảng profiles hay không để tránh lỗi FOREIGN KEY
+ * khi phiên đăng nhập cũ còn lưu trong localStorage từ DB khác.
+ */
+export function resolveValidProfileId(db, userId) {
+  if (!userId) return { id: null, name: null }
+  const row = db.prepare("SELECT id, name FROM profiles WHERE id = ?").get(userId)
+  if (!row) return { id: null, name: null }
+  return { id: row.id, name: row.name || null }
+}
+
+/**
  * Escape ký tự đặc biệt cho RegExp
  */
 function escapeRegExp(str) {
@@ -745,8 +756,7 @@ export function recordOrderMaterialConsumption(db, orderId, cashierId) {
   if (!items || items.length === 0) return { skipped: true }
 
   const orderRow = db.prepare("SELECT invoice_number FROM orders WHERE id = ?").get(orderId)
-  const cashier = cashierId ? db.prepare("SELECT name FROM profiles WHERE id = ?").get(cashierId) : null
-  const cashierName = cashier?.name || null
+  const { id: safeCashierId, name: cashierName } = resolveValidProfileId(db, cashierId)
 
   const bom = resolveOrderItemsBOM(db, items)
   if (bom.usageRows.length === 0 && bom.stockDeductions.length === 0) {
@@ -810,7 +820,7 @@ export function recordOrderMaterialConsumption(db, orderId, cashierId) {
       ded.cost_amount,
       orderId,
       JSON.stringify({ invoice_number: orderRow?.invoice_number || '' }),
-      cashierId || null,
+      safeCashierId,
       cashierName,
       `Xuất bán hóa đơn ${orderRow?.invoice_number || orderId}`
     )
@@ -838,8 +848,7 @@ export function reverseOrderMaterialConsumption(db, orderId, userId, reason) {
   if (alreadyReversed) return { skipped: true }
 
   const orderRow = db.prepare("SELECT invoice_number FROM orders WHERE id = ?").get(orderId)
-  const user = userId ? db.prepare("SELECT name FROM profiles WHERE id = ?").get(userId) : null
-  const userName = user?.name || null
+  const { id: safeUserId, name: userName } = resolveValidProfileId(db, userId)
 
   const getMat = db.prepare("SELECT current_stock FROM materials WHERE id = ?")
   const updateStock = db.prepare("UPDATE materials SET current_stock = ?, updated_at = datetime('now', 'localtime') WHERE id = ?")
@@ -869,7 +878,7 @@ export function reverseOrderMaterialConsumption(db, orderId, userId, reason) {
       Number(d.total_cost) || 0,
       orderId,
       d.detail_json || null,
-      userId || null,
+      safeUserId,
       userName,
       `Hoàn kho đơn ${orderRow?.invoice_number || orderId}${reason ? `: ${reason}` : ''}`
     )
@@ -1139,7 +1148,8 @@ export function createMaterialDbMethods(getDatabase) {
       const db = getDatabase()
       const usedInMatRecipe = db.prepare("SELECT 1 FROM material_recipe_items WHERE ingredient_material_id = ? LIMIT 1").get(id)
       const usedInProdRecipe = db.prepare("SELECT 1 FROM product_recipes WHERE material_id = ? LIMIT 1").get(id)
-      if (usedInMatRecipe || usedInProdRecipe) {
+      const usedInVariantRecipe = db.prepare("SELECT 1 FROM product_variant_recipes WHERE material_id = ? LIMIT 1").get(id)
+      if (usedInMatRecipe || usedInProdRecipe || usedInVariantRecipe) {
         throw new Error('Nguyên vật liệu này đang nằm trong công thức món hoặc bán thành phẩm. Vui lòng gỡ khỏi công thức hoặc chọn Ẩn.')
       }
       const hasHistory =
@@ -1510,7 +1520,7 @@ export function createMaterialDbMethods(getDatabase) {
           WHERE id = ?
         `).run(newStock, newUnitCost, mat.id)
 
-        const user = payload?.user_id ? db.prepare("SELECT name FROM profiles WHERE id = ?").get(payload.user_id) : null
+        const { id: safeUserId, name: userName } = resolveValidProfileId(db, payload?.user_id)
         const unitLabel = payload?.use_purchase_unit ? (mat.purchase_unit || mat.unit) : mat.unit
         const noteText = payload?.note
           ? String(payload.note)
@@ -1531,8 +1541,8 @@ export function createMaterialDbMethods(getDatabase) {
           newStock,
           baseQty > 0 ? roundQty(totalCost / baseQty) : newUnitCost,
           Math.round(totalCost),
-          payload?.user_id || null,
-          user?.name || null,
+          safeUserId,
+          userName,
           noteText
         )
 
@@ -1565,8 +1575,7 @@ export function createMaterialDbMethods(getDatabase) {
 
       return runInTransaction(db, () => {
         const ctx = loadBomContext(db)
-        const user = payload?.user_id ? db.prepare("SELECT name FROM profiles WHERE id = ?").get(payload.user_id) : null
-        const userName = user?.name || null
+        const { id: safeUserId, name: userName } = resolveValidProfileId(db, payload?.user_id)
         const batchId = 'batch-' + crypto.randomUUID().substring(0, 8)
         let totalBatchCost = 0
         const inputsLog = []
@@ -1615,7 +1624,7 @@ export function createMaterialDbMethods(getDatabase) {
             roundQty(effCost),
             lineCost,
             batchId,
-            payload?.user_id || null,
+            safeUserId,
             userName,
             `Pha chế mẻ ${mat.name} (thu ${actualYield} ${mat.unit})`
           )
@@ -1656,7 +1665,7 @@ export function createMaterialDbMethods(getDatabase) {
             roundQty(totalBatchCost / roundedActual),
             Math.round(totalBatchCost),
             batchId,
-            payload?.user_id || null,
+            safeUserId,
             userName,
             `Thành phẩm mẻ ủ ${mat.name}${lossQty > 0 ? ` (hao hụt ủ ${lossQty} ${mat.unit})` : ''}`
           )
@@ -1679,7 +1688,7 @@ export function createMaterialDbMethods(getDatabase) {
           lossQty,
           Math.round(totalBatchCost),
           JSON.stringify(inputsLog),
-          payload?.user_id || null,
+          safeUserId,
           userName,
           payload?.note || null
         )
@@ -1716,8 +1725,7 @@ export function createMaterialDbMethods(getDatabase) {
         const ctx = loadBomContext(db)
         const unitCost = computeMaterialEffectiveCost(mat.id, ctx)
         const costAmount = Math.round(qty * unitCost)
-        const user = payload?.user_id ? db.prepare("SELECT name FROM profiles WHERE id = ?").get(payload.user_id) : null
-        const userName = user?.name || null
+        const { id: safeUserId, name: userName } = resolveValidProfileId(db, payload?.user_id)
         const logId = 'waste-' + crypto.randomUUID().substring(0, 8)
         const roundedQty = roundQty(qty)
 
@@ -1736,7 +1744,7 @@ export function createMaterialDbMethods(getDatabase) {
           reasonName,
           costAmount,
           payload?.note || null,
-          payload?.user_id || null,
+          safeUserId,
           userName
         )
 
@@ -1790,7 +1798,7 @@ export function createMaterialDbMethods(getDatabase) {
             tUnitCost,
             Math.round(tQty * tUnitCost),
             logId,
-            payload?.user_id || null,
+            safeUserId,
             userName,
             `Hao hụt (${reasonName}): ${mat.name}${t.mat.id !== mat.id ? ` (quy đổi từ ${roundedQty} ${mat.unit})` : ''}`
           )
@@ -1834,8 +1842,7 @@ export function createMaterialDbMethods(getDatabase) {
 
       return runInTransaction(db, () => {
         const ctx = loadBomContext(db)
-        const user = payload?.user_id ? db.prepare("SELECT name FROM profiles WHERE id = ?").get(payload.user_id) : null
-        const userName = user?.name || null
+        const { id: safeUserId, name: userName } = resolveValidProfileId(db, payload?.user_id)
         const stId = 'st-' + crypto.randomUUID().substring(0, 8)
         const title = String(payload?.title || `Kiểm kê kho ${new Date().toLocaleDateString('vi-VN')}`).trim()
 
@@ -1872,7 +1879,7 @@ export function createMaterialDbMethods(getDatabase) {
           INSERT INTO stocktakes (
             id, title, status, total_variance_cost, note, created_by, created_by_name, completed_at
           ) VALUES (?, ?, 'COMPLETED', ?, ?, ?, ?, datetime('now', 'localtime'))
-        `).run(stId, title, Math.round(totalVarianceCost), payload?.note || null, payload?.user_id || null, userName)
+        `).run(stId, title, Math.round(totalVarianceCost), payload?.note || null, safeUserId, userName)
 
         const insItem = db.prepare(`
           INSERT INTO stocktake_items (
@@ -1916,7 +1923,7 @@ export function createMaterialDbMethods(getDatabase) {
               pi.unit_cost,
               Math.abs(pi.variance_cost),
               stId,
-              payload?.user_id || null,
+              safeUserId,
               userName,
               `Kiểm kê "${title}": lệch ${pi.variance_qty > 0 ? '+' : ''}${pi.variance_qty} ${pi.unit}`
             )
@@ -2409,5 +2416,263 @@ export function createMaterialDbMethods(getDatabase) {
         return { success: true, matchedProductId: cafeNau?.id || null }
       })
     },
+
+    exportMaterialsAndRecipes() {
+      const db = getDatabase()
+      const units = db.prepare('SELECT name, sort_order FROM measurement_units WHERE active = 1 ORDER BY sort_order ASC, name ASC').all()
+      const wastage_reasons = db.prepare('SELECT name, color, sort_order FROM wastage_reasons WHERE active = 1 ORDER BY sort_order ASC, name ASC').all()
+      const materials = db.prepare(`
+        SELECT id, code, name, item_type, unit, purchase_unit, conversion_factor,
+               yield_qty, deduction_mode, min_stock, unit_cost, active, note
+        FROM materials
+        ORDER BY item_type ASC, name ASC
+      `).all()
+
+      const matById = new Map(materials.map((m) => [m.id, m]))
+      const products = db.prepare('SELECT id, name FROM products').all()
+      const prodById = new Map(products.map((p) => [p.id, p]))
+
+      const mriRows = db.prepare(`
+        SELECT parent_material_id, ingredient_material_id, quantity, note
+        FROM material_recipe_items
+      `).all()
+      const matRecipeMap = new Map()
+      for (const r of mriRows) {
+        const parent = matById.get(r.parent_material_id)
+        const ing = matById.get(r.ingredient_material_id)
+        if (!parent || !ing) continue
+        if (!matRecipeMap.has(parent.name)) {
+          matRecipeMap.set(parent.name, {
+            parent_name: parent.name,
+            yield_qty: Number(parent.yield_qty) || 1,
+            items: [],
+          })
+        }
+        matRecipeMap.get(parent.name).items.push({
+          ingredient_name: ing.name,
+          quantity: Number(r.quantity) || 0,
+          note: r.note || null,
+        })
+      }
+
+      const prRows = db.prepare('SELECT product_id, material_id, quantity, note FROM product_recipes').all()
+      const prodRecipeMap = new Map()
+      for (const r of prRows) {
+        const prod = prodById.get(r.product_id)
+        const mat = matById.get(r.material_id)
+        if (!prod || !mat) continue
+        if (!prodRecipeMap.has(prod.name)) {
+          prodRecipeMap.set(prod.name, { product_name: prod.name, items: [] })
+        }
+        prodRecipeMap.get(prod.name).items.push({
+          material_name: mat.name,
+          quantity: Number(r.quantity) || 0,
+          note: r.note || null,
+        })
+      }
+
+      const pvrRows = db.prepare('SELECT product_id, variant_keyword, material_id, quantity, note FROM product_variant_recipes').all()
+      const pvrMap = new Map()
+      for (const r of pvrRows) {
+        const prod = prodById.get(r.product_id)
+        const mat = matById.get(r.material_id)
+        if (!prod || !mat) continue
+        const key = `${prod.name}|||${r.variant_keyword}`
+        if (!pvrMap.has(key)) {
+          pvrMap.set(key, {
+            product_name: prod.name,
+            variant_keyword: r.variant_keyword,
+            items: [],
+          })
+        }
+        pvrMap.get(key).items.push({
+          material_name: mat.name,
+          quantity: Number(r.quantity) || 0,
+          note: r.note || null,
+        })
+      }
+
+      const modRows = db.prepare('SELECT keyword, material_id, delta_qty, active, note FROM pos_modifier_rules').all()
+      const pos_modifier_rules = modRows
+        .map((r) => {
+          const mat = matById.get(r.material_id)
+          if (!mat) return null
+          return {
+            keyword: r.keyword,
+            material_name: mat.name,
+            delta_qty: Number(r.delta_qty) || 0,
+            active: Number(r.active) === 1,
+            note: r.note || null,
+          }
+        })
+        .filter(Boolean)
+
+      return {
+        version: 1,
+        exported_at: new Date().toISOString(),
+        units,
+        wastage_reasons,
+        materials: materials.map(({ id, ...rest }) => rest),
+        material_recipes: Array.from(matRecipeMap.values()),
+        product_recipes: Array.from(prodRecipeMap.values()),
+        product_variant_recipes: Array.from(pvrMap.values()),
+        pos_modifier_rules,
+      }
+    },
+
+    importMaterialsAndRecipes(payload) {
+      const db = getDatabase()
+      return importMaterialsAndRecipesPayload(db, payload)
+    },
   }
+}
+
+export function importMaterialsAndRecipesPayload(db, payload) {
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('Dữ liệu JSON không hợp lệ')
+  }
+
+  return runInTransaction(db, () => {
+    let addedMaterials = 0
+    let addedProductRecipes = 0
+    let addedMaterialRecipes = 0
+
+    // 1. Units
+    if (Array.isArray(payload.units)) {
+      const insUnit = db.prepare('INSERT OR IGNORE INTO measurement_units (id, name, sort_order, active) VALUES (?, ?, ?, 1)')
+      for (const u of payload.units) {
+        if (u?.name) insUnit.run(crypto.randomUUID(), String(u.name).trim(), Number(u.sort_order) || 0)
+      }
+    }
+
+    // 2. Wastage reasons
+    if (Array.isArray(payload.wastage_reasons)) {
+      const insReason = db.prepare('INSERT OR IGNORE INTO wastage_reasons (id, name, color, sort_order, active) VALUES (?, ?, ?, ?, 1)')
+      for (const r of payload.wastage_reasons) {
+        if (r?.name) insReason.run(crypto.randomUUID(), String(r.name).trim(), r.color || '#d97706', Number(r.sort_order) || 0)
+      }
+    }
+
+    // 3. Materials (match by normalized name)
+    const existingMats = db.prepare('SELECT id, name FROM materials').all()
+    const matNameToId = new Map()
+    for (const m of existingMats) {
+      matNameToId.set(normalizeTextForBom(m.name), m.id)
+    }
+
+    if (Array.isArray(payload.materials)) {
+      const insMat = db.prepare(`
+        INSERT INTO materials (
+          id, code, name, item_type, unit, purchase_unit, conversion_factor,
+          yield_qty, deduction_mode, current_stock, min_stock, unit_cost, active, note
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)
+      `)
+      for (const m of payload.materials) {
+        if (!m?.name) continue
+        const norm = normalizeTextForBom(m.name)
+        if (!matNameToId.has(norm)) {
+          const id = crypto.randomUUID()
+          insMat.run(
+            id,
+            m.code || null,
+            String(m.name).trim(),
+            m.item_type === 'SEMI_FINISHED' ? 'SEMI_FINISHED' : 'RAW',
+            m.unit || 'ml',
+            m.purchase_unit || m.unit || 'ml',
+            Number(m.conversion_factor) || 1,
+            Number(m.yield_qty) || 1,
+            m.deduction_mode === 'BATCH_STOCK' ? 'BATCH_STOCK' : 'EXPLODE_ON_SALE',
+            Number(m.min_stock) || 0,
+            Number(m.unit_cost) || 0,
+            m.active === 0 || m.active === false ? 0 : 1,
+            m.note || null
+          )
+          matNameToId.set(norm, id)
+          addedMaterials++
+        }
+      }
+    }
+
+    // 4. Material recipes (semi-finished) - chỉ thêm nếu nguyên liệu cha chưa có công thức
+    if (Array.isArray(payload.material_recipes)) {
+      const checkMri = db.prepare('SELECT count(*) as c FROM material_recipe_items WHERE parent_material_id = ?')
+      const insMri = db.prepare('INSERT OR IGNORE INTO material_recipe_items (id, parent_material_id, ingredient_material_id, quantity, note) VALUES (?, ?, ?, ?, ?)')
+      for (const mr of payload.material_recipes) {
+        const parentId = matNameToId.get(normalizeTextForBom(mr.parent_name))
+        if (!parentId || !Array.isArray(mr.items)) continue
+        const existing = checkMri.get(parentId)
+        if (existing && existing.c > 0) continue
+        let anyInserted = false
+        for (const item of mr.items) {
+          const ingId = matNameToId.get(normalizeTextForBom(item.ingredient_name))
+          if (!ingId || ingId === parentId) continue
+          insMri.run(crypto.randomUUID(), parentId, ingId, Number(item.quantity) || 0, item.note || null)
+          anyInserted = true
+        }
+        if (anyInserted) addedMaterialRecipes++
+      }
+    }
+
+    // 5. Product recipes (match product by normalized name) - chỉ thêm nếu món chưa có công thức
+    const allProducts = db.prepare('SELECT id, name FROM products').all()
+    const prodNameToId = new Map()
+    for (const p of allProducts) {
+      prodNameToId.set(normalizeTextForBom(p.name), p.id)
+    }
+
+    if (Array.isArray(payload.product_recipes)) {
+      const checkPr = db.prepare('SELECT count(*) as c FROM product_recipes WHERE product_id = ?')
+      const insPr = db.prepare('INSERT OR IGNORE INTO product_recipes (id, product_id, material_id, quantity, note) VALUES (?, ?, ?, ?, ?)')
+      for (const pr of payload.product_recipes) {
+        const prodId = prodNameToId.get(normalizeTextForBom(pr.product_name))
+        if (!prodId || !Array.isArray(pr.items)) continue
+        const existing = checkPr.get(prodId)
+        if (existing && existing.c > 0) continue
+        let anyInserted = false
+        for (const item of pr.items) {
+          const matId = matNameToId.get(normalizeTextForBom(item.material_name))
+          if (!matId) continue
+          insPr.run(crypto.randomUUID(), prodId, matId, Number(item.quantity) || 0, item.note || null)
+          anyInserted = true
+        }
+        if (anyInserted) addedProductRecipes++
+      }
+    }
+
+    // 6. Product variant recipes
+    if (Array.isArray(payload.product_variant_recipes)) {
+      const checkPvr = db.prepare('SELECT count(*) as c FROM product_variant_recipes WHERE product_id = ? AND variant_keyword = ?')
+      const insPvr = db.prepare('INSERT OR IGNORE INTO product_variant_recipes (id, product_id, variant_keyword, material_id, quantity, note) VALUES (?, ?, ?, ?, ?, ?)')
+      for (const pvr of payload.product_variant_recipes) {
+        const prodId = prodNameToId.get(normalizeTextForBom(pvr.product_name))
+        if (!prodId || !pvr.variant_keyword || !Array.isArray(pvr.items)) continue
+        const existing = checkPvr.get(prodId, pvr.variant_keyword)
+        if (existing && existing.c > 0) continue
+        for (const item of pvr.items) {
+          const matId = matNameToId.get(normalizeTextForBom(item.material_name))
+          if (!matId) continue
+          insPvr.run(crypto.randomUUID(), prodId, pvr.variant_keyword, matId, Number(item.quantity) || 0, item.note || null)
+        }
+      }
+    }
+
+    // 7. POS modifier rules
+    if (Array.isArray(payload.pos_modifier_rules)) {
+      const checkMod = db.prepare('SELECT id FROM pos_modifier_rules WHERE LOWER(keyword) = LOWER(?) AND material_id = ?')
+      const insMod = db.prepare('INSERT INTO pos_modifier_rules (id, keyword, material_id, delta_qty, active, note) VALUES (?, ?, ?, ?, ?, ?)')
+      for (const rule of payload.pos_modifier_rules) {
+        const matId = matNameToId.get(normalizeTextForBom(rule.material_name))
+        if (!matId || !rule.keyword) continue
+        if (checkMod.get(rule.keyword, matId)) continue
+        insMod.run(crypto.randomUUID(), rule.keyword, matId, Number(rule.delta_qty) || 0, rule.active === false ? 0 : 1, rule.note || null)
+      }
+    }
+
+    return {
+      success: true,
+      addedMaterials,
+      addedMaterialRecipes,
+      addedProductRecipes,
+    }
+  })
 }

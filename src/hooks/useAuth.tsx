@@ -43,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSession(parsed.session || { access_token: 'local-session', user: parsed.user })
           setProfile(parsed.profile)
 
-          // Cập nhật profile mới nhất từ DB
+          // Cập nhật profile mới nhất từ DB; nếu tài khoản không còn tồn tại trong DB hiện tại thì đăng xuất để tránh lỗi FOREIGN KEY
           callDb('getProfile', parsed.user.id).then((freshProfile) => {
             if (freshProfile) {
               setProfile(freshProfile)
@@ -52,6 +52,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 session: parsed.session,
                 profile: freshProfile,
               }))
+            } else {
+              localStorage.removeItem(STORAGE_KEY)
+              setUser(null)
+              setSession(null)
+              setProfile(null)
             }
           }).catch(() => {})
         }

@@ -73,6 +73,7 @@ export default function PosPage() {
   const [discountMode, setDiscountMode] = useState<'VND' | 'PCT'>('VND')
   const [discountPct, setDiscountPct] = useState<number | ''>(0)
   const [showPayment, setShowPayment] = useState(false)
+  const [paying, setPaying] = useState(false)
   const [openOrders, setOpenOrders] = useState<Order[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [showSearchDropdown, setShowSearchDropdown] = useState(false)
@@ -200,8 +201,9 @@ export default function PosPage() {
         // Refresh tables
         loadData()
       }
-    } catch {
-      toastError('Không thể mở order')
+    } catch (err: unknown) {
+      console.error('Lỗi mở order:', err)
+      toastError(err instanceof Error ? `Không thể mở order: ${err.message}` : 'Không thể mở order')
     }
   }
 
@@ -439,8 +441,8 @@ export default function PosPage() {
         setCurrentOrder(updated)
         setOrderItems(updated.items ?? [])
       }
-    } catch {
-      toastError('Không thể cập nhật')
+    } catch (err: unknown) {
+      toastError(err instanceof Error ? `Không thể cập nhật: ${err.message}` : 'Không thể cập nhật')
     }
   }
 
@@ -454,8 +456,8 @@ export default function PosPage() {
         setCurrentOrder(updated)
         setOrderItems(updated.items ?? [])
       }
-    } catch {
-      toastError('Không thể xóa món')
+    } catch (err: unknown) {
+      toastError(err instanceof Error ? `Không thể xóa món: ${err.message}` : 'Không thể xóa món')
     }
   }
 
@@ -472,8 +474,8 @@ export default function PosPage() {
         setDiscount(amount)
       }
       success(`Đã áp dụng giảm giá ${formatCurrency(amount)}`)
-    } catch {
-      toastError('Lỗi khi giảm giá')
+    } catch (err: unknown) {
+      toastError(err instanceof Error ? `Lỗi khi giảm giá: ${err.message}` : 'Lỗi khi giảm giá')
     }
   }
 
@@ -494,9 +496,19 @@ export default function PosPage() {
 
   // Pay
   const handlePay = async (method: 'CASH' | 'BANK_TRANSFER') => {
-    if (!currentOrder || !user) return
+    if (!currentOrder || !user || paying) return
+    setPaying(true)
     try {
-      await orderService.pay(currentOrder.id, method, currentOrder.total, user.id)
+      const finalSubtotal = currentOrder.subtotal ?? orderItems.reduce((s, i) => s + i.subtotal, 0)
+      const finalDiscount = Math.max(0, discount)
+      const finalTotal = Math.max(0, finalSubtotal - finalDiscount)
+
+      // Đồng bộ giảm giá nếu thu ngân nhập tay nhưng chưa bấm nút Tick xác nhận
+      if (finalDiscount !== (currentOrder.discount ?? 0)) {
+        await orderService.setDiscount(currentOrder.id, finalDiscount)
+      }
+
+      await orderService.pay(currentOrder.id, method, finalTotal, user.id)
 
       const paidData: PrintableOrder = {
         invoice_number: currentOrder.invoice_number,
@@ -510,9 +522,9 @@ export default function PosPage() {
           subtotal: i.subtotal,
           note: i.note,
         })),
-        subtotal: currentOrder.subtotal,
-        discount: currentOrder.discount,
-        total: currentOrder.total,
+        subtotal: finalSubtotal,
+        discount: finalDiscount,
+        total: finalTotal,
         payment_method: method,
       }
 
@@ -530,8 +542,11 @@ export default function PosPage() {
       setDiscount(0)
       loadData()
       success(`Đã thanh toán ${formatCurrency(paidData.total)} (${method === 'CASH' ? 'Tiền mặt' : 'Chuyển khoản'})`)
-    } catch {
-      toastError('Thanh toán thất bại')
+    } catch (err: unknown) {
+      console.error('Lỗi thanh toán:', err)
+      toastError(err instanceof Error ? `Thanh toán thất bại: ${err.message}` : 'Thanh toán thất bại')
+    } finally {
+      setPaying(false)
     }
   }
 
@@ -2017,20 +2032,22 @@ export default function PosPage() {
 
           <button
             className="btn btn-primary btn-lg"
+            disabled={paying}
             onClick={() => handlePay('CASH')}
             style={{ width: '100%' }}
           >
             <Banknote size={20} />
-            Tiền mặt
+            {paying ? 'Đang xử lý...' : 'Tiền mặt'}
           </button>
 
           <button
             className="btn btn-secondary btn-lg"
+            disabled={paying}
             onClick={() => handlePay('BANK_TRANSFER')}
             style={{ width: '100%' }}
           >
             <CreditCard size={20} />
-            Chuyển khoản
+            {paying ? 'Đang xử lý...' : 'Chuyển khoản'}
           </button>
         </div>
       </Modal>

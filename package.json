@@ -1,7 +1,7 @@
 {
   "name": "fuha-cafe-pos",
   "private": true,
-  "version": "2.2.0",
+  "version": "3.0.0",
   "description": "Phần mềm quản lý bán hàng FuHa Cafe POS (Bản Offline)",
   "main": "electron/main.js",
   "type": "module",

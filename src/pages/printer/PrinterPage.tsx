@@ -160,6 +160,32 @@ export default function PrinterPage() {
               </div>
             </div>
 
+            {/* Kiểu làm nổi bật món cho Bar */}
+            <div style={{ marginBottom: '1rem' }}>
+              <label className="input-label">Định dạng món in cho Bar</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setSettings({ ...settings, receiptStyle: 'default' })}
+                  className={`btn ${(settings.receiptStyle || 'default') === 'default' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ padding: '0.65rem 0.5rem', flexDirection: 'column', gap: '0.2rem' }}
+                >
+                  <span style={{ fontWeight: 700, fontSize: '0.875rem' }}>Mặc định (Hiện tại)</span>
+                  <span style={{ fontSize: '0.72rem', opacity: 0.85 }}>In đậm đồng đều các món</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSettings({ ...settings, receiptStyle: 'update_v1' })}
+                  className={`btn ${settings.receiptStyle === 'update_v1' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ padding: '0.65rem 0.5rem', flexDirection: 'column', gap: '0.2rem' }}
+                >
+                  <span style={{ fontWeight: 700, fontSize: '0.875rem' }}>update v1</span>
+                  <span style={{ fontSize: '0.72rem', opacity: 0.85 }}>Đóng khung topping/note & tô đen SL &gt; 1</span>
+                </button>
+              </div>
+            </div>
+
             {/* Switches / Checkboxes */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', cursor: 'pointer', fontSize: '0.875rem' }}>
@@ -283,7 +309,7 @@ export default function PrinterPage() {
                   Xem trước hóa đơn in nhiệt
                 </h3>
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <span className="badge badge-coffee">Khổ {settings.paperSize}</span>
                 <span className="badge" style={{ background: '#e2e8f0', color: '#334155' }}>
                   {settings.fontScale === 'compact'
@@ -292,6 +318,9 @@ export default function PrinterPage() {
                     ? 'Cỡ rõ nét'
                     : 'Cỡ tiêu chuẩn'}
                 </span>
+                {settings.receiptStyle === 'update_v1' && (
+                  <span className="badge badge-warning">update v1</span>
+                )}
               </div>
             </div>
 

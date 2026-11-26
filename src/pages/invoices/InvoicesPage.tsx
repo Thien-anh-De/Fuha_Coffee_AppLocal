@@ -94,8 +94,8 @@ export default function InvoicesPage() {
       setCancelOrder(null)
       setCancelReason('')
       loadOrders()
-    } catch {
-      toastError('Lỗi khi hủy hóa đơn')
+    } catch (err: unknown) {
+      toastError(err instanceof Error ? `Lỗi khi hủy hóa đơn: ${err.message}` : 'Lỗi khi hủy hóa đơn')
     }
   }
 
@@ -106,8 +106,8 @@ export default function InvoicesPage() {
       success('Đã xóa hóa đơn vĩnh viễn')
       setDeleteOrder(null)
       loadOrders()
-    } catch {
-      toastError('Lỗi khi xóa hóa đơn')
+    } catch (err: unknown) {
+      toastError(err instanceof Error ? `Lỗi khi xóa hóa đơn: ${err.message}` : 'Lỗi khi xóa hóa đơn')
     }
   }
 

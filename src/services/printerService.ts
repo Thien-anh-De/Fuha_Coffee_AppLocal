@@ -6,6 +6,7 @@
 export interface PrinterSettings {
   paperSize: 'K80' | 'K58'
   fontScale?: 'compact' | 'standard' | 'large'
+  receiptStyle?: 'default' | 'update_v1'
   shopName: string
   shopAddress: string
   shopPhone: string
@@ -19,6 +20,7 @@ export interface PrinterSettings {
 export const DEFAULT_PRINTER_SETTINGS: PrinterSettings = {
   paperSize: 'K80',
   fontScale: 'standard',
+  receiptStyle: 'default',
   shopName: 'FUHA CAFE',
   shopAddress: 'Trường ĐH Hà Nội, Km9 Nguyễn Trãi, Đại Mỗ',
   shopPhone: '0985162004',

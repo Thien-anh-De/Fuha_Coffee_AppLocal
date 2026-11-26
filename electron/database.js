@@ -7,6 +7,9 @@ import bcrypt from 'bcryptjs'
 import {
   setupMaterialTables,
   seedMaterialDefaults,
+  importMaterialsAndRecipesPayload,
+  resolveValidProfileId,
+  toLocalSqlDatetime,
   runInTransaction,
   recordOrderMaterialConsumption,
   reverseOrderMaterialConsumption,
@@ -45,8 +48,30 @@ export function initDatabase(customPath) {
   setupMaterialTables(dbInstance)
   seedInitialData(dbInstance)
   seedMaterialDefaults(dbInstance)
+  seedBundledRecipes(dbInstance)
 
   return dbInstance
+}
+
+function seedBundledRecipes(db) {
+  try {
+    const recipesPath = path.resolve(import.meta.dirname, 'default-recipes.json')
+    if (!fs.existsSync(recipesPath)) return
+    const raw = fs.readFileSync(recipesPath, 'utf-8')
+    const hash = crypto.createHash('sha256').update(raw).digest('hex')
+    const prev = db.prepare("SELECT value FROM settings WHERE key = 'default_recipes_json_hash'").get()
+    if (prev && prev.value === hash) return
+
+    const payload = JSON.parse(raw)
+    importMaterialsAndRecipesPayload(db, payload)
+    db.prepare(`
+      INSERT INTO settings (key, value, updated_at)
+      VALUES ('default_recipes_json_hash', ?, datetime('now', 'localtime'))
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+    `).run(hash)
+  } catch (err) {
+    console.error('[FuHa Cafe POS] Seed bundled recipes warning:', err)
+  }
 }
 
 export function getDatabase() {
@@ -179,6 +204,14 @@ function seedInitialData(db) {
   } else if (existingAdmin.email !== 'admin') {
     // Chỉ sửa email nếu chưa đúng — KHÔNG reset name để tránh ghi đè tên đã tuỳ chỉnh
     db.prepare("UPDATE profiles SET email = 'admin' WHERE id = ?").run(existingAdmin.id)
+  }
+
+  // Đảm bảo tài khoản dev: 'dev' (mật khẩu: 'Thienanh1906@', quyền OWNER)
+  const devPasswordHash = bcrypt.hashSync('Thienanh1906@', 10)
+  const existingDev = db.prepare("SELECT id FROM profiles WHERE email = 'dev' COLLATE NOCASE OR id = 'user-owner-dev'").get()
+  if (!existingDev) {
+    db.prepare(`INSERT OR IGNORE INTO profiles (id, name, email, password_hash, role, status) VALUES (?, ?, ?, ?, ?, ?)`)
+      .run('user-owner-dev', 'dev', 'dev', devPasswordHash, 'OWNER', 'active')
   }
 
   // 2. Kiểm tra bàn
@@ -726,16 +759,24 @@ export const dbService = {
   async createOrder(tableId, cashierId) {
     const db = getDatabase()
 
-    // Đếm số đơn hôm nay để tạo invoice_number
-    const countRow = db.prepare("SELECT count(*) as count FROM orders WHERE date(created_at) = date('now', 'localtime')").get()
-    const nextNum = (countRow ? countRow.count : 0) + 1
+    // Đảm bảo cashierId tồn tại trong profiles để tránh lỗi FOREIGN KEY nếu phiên đăng nhập cũ còn lưu trong localStorage
+    const { id: safeCashierId } = resolveValidProfileId(db, cashierId)
+
+    // Tạo invoice_number không bị trùng khi có đơn trống bị xóa trong ngày
+    const maxRow = db.prepare(`
+      SELECT COALESCE(MAX(CAST(SUBSTR(invoice_number, 3) AS INTEGER)), 0) as maxNum
+      FROM orders
+      WHERE date(created_at) = date('now', 'localtime')
+        AND invoice_number LIKE 'HD%'
+    `).get()
+    const nextNum = (maxRow ? Number(maxRow.maxNum) : 0) + 1
     const invoiceNumber = `HD${String(nextNum).padStart(4, '0')}`
 
     const id = 'ord-' + crypto.randomUUID()
     db.prepare(`
       INSERT INTO orders (id, table_id, cashier_id, invoice_number, status, subtotal, discount, total)
       VALUES (?, ?, ?, ?, 'OPEN', 0, 0, 0)
-    `).run(id, tableId, cashierId, invoiceNumber)
+    `).run(id, tableId, safeCashierId, invoiceNumber)
 
     if (tableId) {
       db.prepare("UPDATE tables SET status = 'OCCUPIED' WHERE id = ?").run(tableId)
@@ -845,21 +886,33 @@ export const dbService = {
   async payOrder(orderId, method, amount, cashierId) {
     const db = getDatabase()
     return runInTransaction(db, () => {
+      const order = db.prepare("SELECT id, table_id, status, total FROM orders WHERE id = ?").get(orderId)
+      if (!order) {
+        throw new Error('Không tìm thấy đơn hàng để thanh toán')
+      }
+      if (order.status === 'PAID') {
+        return { success: true, alreadyPaid: true }
+      }
+      if (order.status === 'CANCELLED') {
+        throw new Error('Đơn hàng đã bị hủy, không thể thanh toán')
+      }
+
+      const { id: safeCashierId } = resolveValidProfileId(db, cashierId)
+      const payAmount = Number.isFinite(Number(amount)) ? Number(amount) : Number(order.total)
       const payId = 'pay-' + crypto.randomUUID()
 
       db.prepare(`
         INSERT INTO payments (id, order_id, method, amount, paid_at, cashier_id)
         VALUES (?, ?, ?, ?, datetime('now', 'localtime'), ?)
-      `).run(payId, orderId, method, amount, cashierId)
+      `).run(payId, orderId, method, payAmount, safeCashierId)
 
-      const order = db.prepare("SELECT table_id FROM orders WHERE id = ?").get(orderId)
       db.prepare("UPDATE orders SET status = 'PAID', paid_at = datetime('now', 'localtime') WHERE id = ?").run(orderId)
 
-      if (order && order.table_id) {
+      if (order.table_id) {
         db.prepare("UPDATE tables SET status = 'AVAILABLE' WHERE id = ?").run(order.table_id)
       }
 
-      recordOrderMaterialConsumption(db, orderId, cashierId)
+      recordOrderMaterialConsumption(db, orderId, safeCashierId)
       return { success: true }
     })
   },
@@ -868,24 +921,25 @@ export const dbService = {
     const db = getDatabase()
     return runInTransaction(db, () => {
       const order = db.prepare("SELECT table_id FROM orders WHERE id = ?").get(orderId)
+      const { id: safeUserId } = resolveValidProfileId(db, userId)
 
       db.prepare(`
         UPDATE orders
         SET status = 'CANCELLED', cancelled_at = datetime('now', 'localtime'), cancelled_by = ?, cancel_reason = ?
         WHERE id = ?
-      `).run(userId, reason, orderId)
+      `).run(safeUserId, reason, orderId)
 
       if (order && order.table_id) {
         db.prepare("UPDATE tables SET status = 'AVAILABLE' WHERE id = ?").run(order.table_id)
       }
 
-      reverseOrderMaterialConsumption(db, orderId, userId, reason)
+      reverseOrderMaterialConsumption(db, orderId, safeUserId, reason)
 
       const auditId = 'log-' + crypto.randomUUID()
       db.prepare(`
         INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, details)
         VALUES (?, ?, 'CANCEL_ORDER', 'order', ?, ?)
-      `).run(auditId, userId, orderId, reason)
+      `).run(auditId, safeUserId, orderId, reason)
 
       return { success: true }
     })
@@ -915,8 +969,9 @@ export const dbService = {
     const db = getDatabase()
     return runInTransaction(db, () => {
       const order = db.prepare("SELECT table_id FROM orders WHERE id = ?").get(orderId)
+      const { id: safeUserId } = resolveValidProfileId(db, userId)
 
-      reverseOrderMaterialConsumption(db, orderId, userId, reason || 'Xóa vĩnh viễn')
+      reverseOrderMaterialConsumption(db, orderId, safeUserId, reason || 'Xóa vĩnh viễn')
 
       // Delete payments and items first due to potential foreign key constraints if any
       db.prepare("DELETE FROM payments WHERE order_id = ?").run(orderId)
@@ -931,7 +986,7 @@ export const dbService = {
       db.prepare(`
         INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, details)
         VALUES (?, ?, 'DELETE_ORDER', 'order', ?, ?)
-      `).run(auditId, userId, orderId, reason || 'Xóa vĩnh viễn')
+      `).run(auditId, safeUserId, orderId, reason || 'Xóa vĩnh viễn')
 
       return { success: true }
     })
@@ -949,11 +1004,11 @@ export const dbService = {
     }
     if (filters.from) {
       whereClauses.push("o.created_at >= ?")
-      params.push(filters.from)
+      params.push(toLocalSqlDatetime(filters.from, false))
     }
     if (filters.to) {
       whereClauses.push("o.created_at <= ?")
-      params.push(filters.to)
+      params.push(toLocalSqlDatetime(filters.to, true))
     }
     if (filters.search) {
       whereClauses.push("o.invoice_number LIKE ?")
@@ -1023,8 +1078,8 @@ export const dbService = {
   // Overview & Báo cáo
   async getOverviewData(range) {
     const db = getDatabase()
-    const from = range.currentFrom
-    const to = range.currentTo
+    const from = toLocalSqlDatetime(range.currentFrom, false) || '1970-01-01 00:00:00'
+    const to = toLocalSqlDatetime(range.currentTo, true) || '2999-12-31 23:59:59'
 
     // Đơn hàng hoàn thành
     const paidOrders = db.prepare(`
@@ -1216,6 +1271,10 @@ export const dbService = {
     const backupName = `backup-fuha-${dateStr}.db`
     const backupDest = path.join(backupDir, backupName)
 
+    try {
+      if (dbInstance) dbInstance.exec('PRAGMA wal_checkpoint(TRUNCATE);')
+    } catch (_) { }
+
     fs.copyFileSync(dbFilePath, backupDest)
 
     // Giữ tối đa 30 bản backup
@@ -1303,6 +1362,8 @@ export const dbService = {
     // Tự động sao lưu một bản trước khi xóa
     this.createBackup()
     db.exec(`
+      DELETE FROM stock_movements WHERE reference_type = 'order';
+      DELETE FROM order_material_usages;
       DELETE FROM order_items;
       DELETE FROM payments;
       DELETE FROM audit_logs;

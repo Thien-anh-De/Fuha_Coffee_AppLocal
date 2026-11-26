@@ -160,20 +160,48 @@ export function generateReceiptHtml(
     }
   }
 
+  const isUpdateV1 = settings.receiptStyle === 'update_v1'
+
   const itemsHtml = order.items
-    .map(
-      (item) => `
+    .map((item) => {
+      const hasNote = Boolean(item.note && item.note.trim())
+      const hasMultiQty = item.quantity > 1
+
+      if (!isUpdateV1) {
+        return `
       <tr>
         <td style="padding: 2px 2px 2px 0; word-break: break-word; overflow-wrap: break-word; vertical-align: top;">
           <div style="font-weight: 700; color: #000; line-height: 1.25;">${escapeHtml(item.product_name)}</div>
-          ${item.note ? `<div style="font-size: ${toppingSize}; color: #000; font-weight: 700; font-style: normal; padding-left: 2px; margin-top: 1px; line-height: 1.3;">${formatReceiptNote(item.note)}</div>` : ''}
+          ${hasNote ? `<div style="font-size: ${toppingSize}; color: #000; font-weight: 700; font-style: normal; padding-left: 2px; margin-top: 1px; line-height: 1.3;">${formatReceiptNote(item.note!)}</div>` : ''}
         </td>
         <td style="padding: 2px 0; text-align: center; white-space: nowrap; vertical-align: top; font-weight: 600;">${item.quantity}</td>
         <td style="padding: 2px 0; text-align: right; white-space: nowrap; vertical-align: top; font-size: ${priceSize}; font-weight: 600;">${formatReceiptPrice(item.unit_price)}</td>
         <td style="padding: 2px 0; text-align: right; font-weight: 800; white-space: nowrap; vertical-align: top; font-size: ${priceSize};">${formatReceiptPrice(item.subtotal)}</td>
       </tr>
     `
-    )
+      }
+
+      const nameWeight = hasNote ? '800' : '400'
+      const qtyHtml = hasMultiQty
+        ? `<span style="display: inline-block; background: #000; color: #fff; font-weight: 800; padding: 0 5px; border-radius: 2px; line-height: 1.35;">${item.quantity}</span>`
+        : `<span style="font-weight: 400;">${item.quantity}</span>`
+
+      return `
+      <tr>
+        <td style="padding: 3px 2px 3px 0; word-break: break-word; overflow-wrap: break-word; vertical-align: top;">
+          <div style="font-weight: ${nameWeight}; color: #000; line-height: 1.25;">${escapeHtml(item.product_name)}</div>
+          ${
+            hasNote
+              ? `<div style="display: inline-block; font-size: ${toppingSize}; color: #000; font-weight: 800; font-style: normal; border: 1.5px solid #000; border-radius: 2px; padding: 1px 4px; margin-top: 2px; line-height: 1.3;">${formatReceiptNote(item.note!)}</div>`
+              : ''
+          }
+        </td>
+        <td style="padding: 3px 0; text-align: center; white-space: nowrap; vertical-align: top;">${qtyHtml}</td>
+        <td style="padding: 3px 0; text-align: right; white-space: nowrap; vertical-align: top; font-size: ${priceSize}; font-weight: 400;">${formatReceiptPrice(item.unit_price)}</td>
+        <td style="padding: 3px 0; text-align: right; font-weight: 600; white-space: nowrap; vertical-align: top; font-size: ${priceSize};">${formatReceiptPrice(item.subtotal)}</td>
+      </tr>
+    `
+    })
     .join('')
 
   return `

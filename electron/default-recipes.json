@@ -1,0 +1,3367 @@
+{
+  "version": 1,
+  "exported_at": "2026-11-26T04:22:26.206Z",
+  "units": [
+    {
+      "name": "ml",
+      "sort_order": 1
+    },
+    {
+      "name": "lít",
+      "sort_order": 2
+    },
+    {
+      "name": "g",
+      "sort_order": 3
+    },
+    {
+      "name": "kg",
+      "sort_order": 4
+    },
+    {
+      "name": "lon",
+      "sort_order": 5
+    },
+    {
+      "name": "hộp",
+      "sort_order": 6
+    },
+    {
+      "name": "túi",
+      "sort_order": 7
+    },
+    {
+      "name": "cái",
+      "sort_order": 8
+    },
+    {
+      "name": "viên",
+      "sort_order": 9
+    },
+    {
+      "name": "mẻ",
+      "sort_order": 10
+    },
+    {
+      "name": "bông",
+      "sort_order": 99
+    },
+    {
+      "name": "gram",
+      "sort_order": 99
+    },
+    {
+      "name": "gramm",
+      "sort_order": 99
+    },
+    {
+      "name": "hạt",
+      "sort_order": 99
+    },
+    {
+      "name": "lát",
+      "sort_order": 99
+    },
+    {
+      "name": "miếng",
+      "sort_order": 99
+    },
+    {
+      "name": "quả",
+      "sort_order": 99
+    }
+  ],
+  "wastage_reasons": [
+    {
+      "name": "Pha hỏng / Nhầm công thức",
+      "color": "#dc2626",
+      "sort_order": 1
+    },
+    {
+      "name": "Đổ vỡ / Rơi vãi",
+      "color": "#ea580c",
+      "sort_order": 2
+    },
+    {
+      "name": "Hao hụt ủ / Sơ chế",
+      "color": "#d97706",
+      "sort_order": 3
+    },
+    {
+      "name": "Đổ bỏ cuối ngày (Quá hạn dùng)",
+      "color": "#7c3aed",
+      "sort_order": 4
+    },
+    {
+      "name": "Hết hạn sử dụng",
+      "color": "#b91c1c",
+      "sort_order": 5
+    },
+    {
+      "name": "Thử vị / Mời khách",
+      "color": "#2563eb",
+      "sort_order": 6
+    }
+  ],
+  "materials": [
+    {
+      "code": null,
+      "name": "Bột kem trứng",
+      "item_type": "RAW",
+      "unit": "gram",
+      "purchase_unit": "gram",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 154,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "Bột sữa",
+      "item_type": "RAW",
+      "unit": "gram",
+      "purchase_unit": "gram",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 77.6,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "CFDL",
+      "item_type": "RAW",
+      "unit": "gram",
+      "purchase_unit": "gram",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 170,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "CFLV",
+      "item_type": "RAW",
+      "unit": "gram",
+      "purchase_unit": "gram",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 208,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "Cam",
+      "item_type": "RAW",
+      "unit": "quả",
+      "purchase_unit": "quả",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 0,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "Cosy hoa cúc",
+      "item_type": "RAW",
+      "unit": "túi",
+      "purchase_unit": "túi",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 1700,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "Cà phê nước 2",
+      "item_type": "RAW",
+      "unit": "ml",
+      "purchase_unit": "ml",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 0,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "Mật ong",
+      "item_type": "RAW",
+      "unit": "ml",
+      "purchase_unit": "ml",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 67,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "Mứt dâu",
+      "item_type": "RAW",
+      "unit": "ml",
+      "purchase_unit": "ml",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 156,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "Mứt việt quất",
+      "item_type": "RAW",
+      "unit": "ml",
+      "purchase_unit": "ml",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 130,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "Mứt vải",
+      "item_type": "RAW",
+      "unit": "ml",
+      "purchase_unit": "ml",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 122,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "Mứt xoài",
+      "item_type": "RAW",
+      "unit": "ml",
+      "purchase_unit": "ml",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 149,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "Mứt ổi",
+      "item_type": "RAW",
+      "unit": "ml",
+      "purchase_unit": "ml",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 172,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "Siro bạc hà",
+      "item_type": "RAW",
+      "unit": "ml",
+      "purchase_unit": "ml",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 82.5,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "Siro chanh vàng",
+      "item_type": "RAW",
+      "unit": "ml",
+      "purchase_unit": "ml",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 206,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "Siro đào",
+      "item_type": "RAW",
+      "unit": "ml",
+      "purchase_unit": "ml",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 78,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "Sữa tươi",
+      "item_type": "RAW",
+      "unit": "ml",
+      "purchase_unit": "ml",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 29,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "Sữa đặc",
+      "item_type": "RAW",
+      "unit": "ml",
+      "purchase_unit": "ml",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 46,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "bột cacao",
+      "item_type": "RAW",
+      "unit": "gram",
+      "purchase_unit": "gram",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 330,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "bột khoai môn",
+      "item_type": "RAW",
+      "unit": "gram",
+      "purchase_unit": "gram",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 165,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "bột matcha",
+      "item_type": "RAW",
+      "unit": "gram",
+      "purchase_unit": "gram",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 780,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "bột mix",
+      "item_type": "RAW",
+      "unit": "gram",
+      "purchase_unit": "gram",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 156,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "chanh",
+      "item_type": "RAW",
+      "unit": "quả",
+      "purchase_unit": "quả",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 0,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "cosy gừng",
+      "item_type": "RAW",
+      "unit": "túi",
+      "purchase_unit": "túi",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 1700,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "cosy quế",
+      "item_type": "RAW",
+      "unit": "túi",
+      "purchase_unit": "túi",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 1480,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "cốt dừa",
+      "item_type": "RAW",
+      "unit": "ml",
+      "purchase_unit": "ml",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 83.7,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "gừng tươi",
+      "item_type": "RAW",
+      "unit": "lát",
+      "purchase_unit": "lát",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 0,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "hoa cúc",
+      "item_type": "RAW",
+      "unit": "bông",
+      "purchase_unit": "bông",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 0,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "hồng trà",
+      "item_type": "RAW",
+      "unit": "gram",
+      "purchase_unit": "gram",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 150,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "kì tử",
+      "item_type": "RAW",
+      "unit": "hạt",
+      "purchase_unit": "hạt",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 0,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "nha đam",
+      "item_type": "RAW",
+      "unit": "gram",
+      "purchase_unit": "gram",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 30,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "quất",
+      "item_type": "RAW",
+      "unit": "quả",
+      "purchase_unit": "quả",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 0,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "richs lùn",
+      "item_type": "RAW",
+      "unit": "gram",
+      "purchase_unit": "gram",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 69,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "siro quế",
+      "item_type": "RAW",
+      "unit": "ml",
+      "purchase_unit": "ml",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 174,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "siro đường đen",
+      "item_type": "RAW",
+      "unit": "ml",
+      "purchase_unit": "ml",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 102.5,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "sốt caramel Golden farm",
+      "item_type": "RAW",
+      "unit": "ml",
+      "purchase_unit": "ml",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 138,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "sữa chua",
+      "item_type": "RAW",
+      "unit": "hộp",
+      "purchase_unit": "hộp",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 3700,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "thanh quế",
+      "item_type": "RAW",
+      "unit": "miếng",
+      "purchase_unit": "miếng",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 0,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "trà hoa 7 màu",
+      "item_type": "RAW",
+      "unit": "túi",
+      "purchase_unit": "túi",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 0,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "trà nhài",
+      "item_type": "RAW",
+      "unit": "gram",
+      "purchase_unit": "gram",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 180,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "trân châu",
+      "item_type": "RAW",
+      "unit": "gram",
+      "purchase_unit": "gram",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 24.3,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "táo đỏ",
+      "item_type": "RAW",
+      "unit": "miếng",
+      "purchase_unit": "miếng",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 0,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "Đá",
+      "item_type": "RAW",
+      "unit": "gram",
+      "purchase_unit": "gram",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 1.6,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "Đường cát",
+      "item_type": "RAW",
+      "unit": "gram",
+      "purchase_unit": "gram",
+      "conversion_factor": 1,
+      "yield_qty": 1,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 26,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "CAFE CHUNG",
+      "item_type": "SEMI_FINISHED",
+      "unit": "ml",
+      "purchase_unit": "ml",
+      "conversion_factor": 1,
+      "yield_qty": 400,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 0,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "CAFE ĐEN",
+      "item_type": "SEMI_FINISHED",
+      "unit": "ml",
+      "purchase_unit": "ml",
+      "conversion_factor": 1,
+      "yield_qty": 400,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 0,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "Coldbrew",
+      "item_type": "SEMI_FINISHED",
+      "unit": "ml",
+      "purchase_unit": "ml",
+      "conversion_factor": 1,
+      "yield_qty": 2100,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 0,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "Cốt trà nhài",
+      "item_type": "SEMI_FINISHED",
+      "unit": "ml",
+      "purchase_unit": "ml",
+      "conversion_factor": 1,
+      "yield_qty": 4500,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 0,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "Kem muối",
+      "item_type": "SEMI_FINISHED",
+      "unit": "gram",
+      "purchase_unit": "gram",
+      "conversion_factor": 1,
+      "yield_qty": 745,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 0,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "Kem trứng",
+      "item_type": "SEMI_FINISHED",
+      "unit": "gram",
+      "purchase_unit": "gram",
+      "conversion_factor": 1,
+      "yield_qty": 250,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 0,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "cốt trà sữa",
+      "item_type": "SEMI_FINISHED",
+      "unit": "ml",
+      "purchase_unit": "ml",
+      "conversion_factor": 1,
+      "yield_qty": 4700,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 0,
+      "active": 1,
+      "note": null
+    },
+    {
+      "code": null,
+      "name": "Đường nước",
+      "item_type": "SEMI_FINISHED",
+      "unit": "ml",
+      "purchase_unit": "ml",
+      "conversion_factor": 1,
+      "yield_qty": 1440,
+      "deduction_mode": "EXPLODE_ON_SALE",
+      "min_stock": 0,
+      "unit_cost": 0,
+      "active": 1,
+      "note": null
+    }
+  ],
+  "material_recipes": [
+    {
+      "parent_name": "CAFE CHUNG",
+      "yield_qty": 400,
+      "items": [
+        {
+          "ingredient_name": "CFDL",
+          "quantity": 67,
+          "note": null
+        },
+        {
+          "ingredient_name": "CFLV",
+          "quantity": 133,
+          "note": null
+        }
+      ]
+    },
+    {
+      "parent_name": "CAFE ĐEN",
+      "yield_qty": 400,
+      "items": [
+        {
+          "ingredient_name": "CFDL",
+          "quantity": 150,
+          "note": null
+        }
+      ]
+    },
+    {
+      "parent_name": "Kem muối",
+      "yield_qty": 745,
+      "items": [
+        {
+          "ingredient_name": "Sữa đặc",
+          "quantity": 100,
+          "note": null
+        },
+        {
+          "ingredient_name": "richs lùn",
+          "quantity": 645,
+          "note": null
+        }
+      ]
+    },
+    {
+      "parent_name": "Kem trứng",
+      "yield_qty": 250,
+      "items": [
+        {
+          "ingredient_name": "richs lùn",
+          "quantity": 200,
+          "note": null
+        },
+        {
+          "ingredient_name": "Bột kem trứng",
+          "quantity": 50,
+          "note": null
+        }
+      ]
+    },
+    {
+      "parent_name": "Đường nước",
+      "yield_qty": 1440,
+      "items": [
+        {
+          "ingredient_name": "Đường cát",
+          "quantity": 1000,
+          "note": null
+        }
+      ]
+    },
+    {
+      "parent_name": "Coldbrew",
+      "yield_qty": 2100,
+      "items": [
+        {
+          "ingredient_name": "CFLV",
+          "quantity": 160,
+          "note": null
+        }
+      ]
+    },
+    {
+      "parent_name": "Cốt trà nhài",
+      "yield_qty": 4500,
+      "items": [
+        {
+          "ingredient_name": "trà nhài",
+          "quantity": 75,
+          "note": null
+        },
+        {
+          "ingredient_name": "Đá",
+          "quantity": 1500,
+          "note": null
+        }
+      ]
+    },
+    {
+      "parent_name": "cốt trà sữa",
+      "yield_qty": 4700,
+      "items": [
+        {
+          "ingredient_name": "hồng trà",
+          "quantity": 150,
+          "note": null
+        },
+        {
+          "ingredient_name": "Bột sữa",
+          "quantity": 600,
+          "note": null
+        },
+        {
+          "ingredient_name": "Sữa đặc",
+          "quantity": 450,
+          "note": null
+        },
+        {
+          "ingredient_name": "Đường cát",
+          "quantity": 120,
+          "note": null
+        },
+        {
+          "ingredient_name": "Đá",
+          "quantity": 600,
+          "note": null
+        }
+      ]
+    }
+  ],
+  "product_recipes": [
+    {
+      "product_name": "Cà phê bạc sỉu",
+      "items": [
+        {
+          "material_name": "CAFE CHUNG",
+          "quantity": 40,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 100,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Cà phê cốt dừa",
+      "items": [
+        {
+          "material_name": "CAFE CHUNG",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "cốt dừa",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 50,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 250,
+          "note": null
+        },
+        {
+          "material_name": "bột mix",
+          "quantity": 10,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Cà phê latte",
+      "items": [
+        {
+          "material_name": "CAFE CHUNG",
+          "quantity": 40,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 100,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 10,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 10,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 100,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Cà phê muối",
+      "items": [
+        {
+          "material_name": "CAFE CHUNG",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Kem muối",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 100,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Cà phê kem trứng",
+      "items": [
+        {
+          "material_name": "CAFE CHUNG",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Kem trứng",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 100,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Cà phê nâu (nóng/đá)",
+      "items": [
+        {
+          "material_name": "CAFE CHUNG",
+          "quantity": 50,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 100,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Cà phê đen (nóng/đá)",
+      "items": [
+        {
+          "material_name": "CAFE ĐEN",
+          "quantity": 60,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 100,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Americano chanh vàng",
+      "items": [
+        {
+          "material_name": "Cà phê nước 2",
+          "quantity": 100,
+          "note": null
+        },
+        {
+          "material_name": "Siro chanh vàng",
+          "quantity": 25,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 100,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 5,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Americano đào",
+      "items": [
+        {
+          "material_name": "Cà phê nước 2",
+          "quantity": 100,
+          "note": null
+        },
+        {
+          "material_name": "Siro đào",
+          "quantity": 25,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 100,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Americano đá",
+      "items": [
+        {
+          "material_name": "Cà phê nước 2",
+          "quantity": 100,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 100,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Cold Brew đào",
+      "items": [
+        {
+          "material_name": "Coldbrew",
+          "quantity": 125,
+          "note": null
+        },
+        {
+          "material_name": "Siro đào",
+          "quantity": 25,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 100,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Cold Brew chanh vàng",
+      "items": [
+        {
+          "material_name": "Coldbrew",
+          "quantity": 125,
+          "note": null
+        },
+        {
+          "material_name": "Siro chanh vàng",
+          "quantity": 25,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 100,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 5,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Cold Brew đá",
+      "items": [
+        {
+          "material_name": "Coldbrew",
+          "quantity": 180,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 130,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Cacao bạc hà",
+      "items": [
+        {
+          "material_name": "Siro bạc hà",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 80,
+          "note": null
+        },
+        {
+          "material_name": "bột cacao",
+          "quantity": 10,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 120,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 10,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Cacao kem muối",
+      "items": [
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "bột cacao",
+          "quantity": 10,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 120,
+          "note": null
+        },
+        {
+          "material_name": "Kem muối",
+          "quantity": 30,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Cacao nóng/đá",
+      "items": [
+        {
+          "material_name": "bột cacao",
+          "quantity": 10,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 130,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Cacao latte",
+      "items": [
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 100,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 10,
+          "note": null
+        },
+        {
+          "material_name": "bột cacao",
+          "quantity": 10,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 120,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 10,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Khoai môn kem muối",
+      "items": [
+        {
+          "material_name": "bột khoai môn",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 100,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 100,
+          "note": null
+        },
+        {
+          "material_name": "Kem muối",
+          "quantity": 30,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Khoai môn latte",
+      "items": [
+        {
+          "material_name": "bột khoai môn",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 100,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 130,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Khoai môn sữa dừa",
+      "items": [
+        {
+          "material_name": "bột khoai môn",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 100,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "cốt dừa",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 100,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Matcha latte",
+      "items": [
+        {
+          "material_name": "bột matcha",
+          "quantity": 3,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 100,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 10,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 120,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Matcha kem muối",
+      "items": [
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 100,
+          "note": null
+        },
+        {
+          "material_name": "bột matcha",
+          "quantity": 3,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 120,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "Kem muối",
+          "quantity": 30,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Matcha caramel",
+      "items": [
+        {
+          "material_name": "bột matcha",
+          "quantity": 3,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 100,
+          "note": null
+        },
+        {
+          "material_name": "sốt caramel Golden farm",
+          "quantity": 25,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 10,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 120,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Sữa chua lắc cafe",
+      "items": [
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "sữa chua",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "CAFE CHUNG",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 120,
+          "note": null
+        },
+        {
+          "material_name": "quất",
+          "quantity": 1,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Sữa chua lắc dâu",
+      "items": [
+        {
+          "material_name": "Mứt dâu",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 10,
+          "note": null
+        },
+        {
+          "material_name": "quất",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "sữa chua",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 130,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Sữa chua lắc việt quất",
+      "items": [
+        {
+          "material_name": "Mứt việt quất",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 10,
+          "note": null
+        },
+        {
+          "material_name": "quất",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "sữa chua",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 130,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Sữa chua lắc vải",
+      "items": [
+        {
+          "material_name": "Mứt vải",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 10,
+          "note": null
+        },
+        {
+          "material_name": "quất",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "sữa chua",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 130,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Sữa chua lắc xoài",
+      "items": [
+        {
+          "material_name": "Mứt xoài",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 10,
+          "note": null
+        },
+        {
+          "material_name": "quất",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "sữa chua",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 130,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Sữa chua lắc đá",
+      "items": [
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "quất",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "sữa chua",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 130,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Sữa chua lắc ổi",
+      "items": [
+        {
+          "material_name": "Mứt ổi",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 10,
+          "note": null
+        },
+        {
+          "material_name": "quất",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "sữa chua",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 130,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Sữa tươi trân châu đường đen",
+      "items": [
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 180,
+          "note": null
+        },
+        {
+          "material_name": "trân châu",
+          "quantity": 60,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 150,
+          "note": null
+        },
+        {
+          "material_name": "siro đường đen",
+          "quantity": 25,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Trà sữa bạc hà",
+      "items": [
+        {
+          "material_name": "Đá",
+          "quantity": 150,
+          "note": null
+        },
+        {
+          "material_name": "cốt trà sữa",
+          "quantity": 170,
+          "note": null
+        },
+        {
+          "material_name": "Siro bạc hà",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "trân châu",
+          "quantity": 60,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Trà sữa kem muối",
+      "items": [
+        {
+          "material_name": "cốt trà sữa",
+          "quantity": 180,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 150,
+          "note": null
+        },
+        {
+          "material_name": "trân châu",
+          "quantity": 60,
+          "note": null
+        },
+        {
+          "material_name": "Kem muối",
+          "quantity": 30,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Trà sữa kem trứng",
+      "items": [
+        {
+          "material_name": "Kem trứng",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "cốt trà sữa",
+          "quantity": 180,
+          "note": null
+        },
+        {
+          "material_name": "trân châu",
+          "quantity": 60,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 150,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Trà sữa khoai môn",
+      "items": [
+        {
+          "material_name": "cốt trà sữa",
+          "quantity": 150,
+          "note": null
+        },
+        {
+          "material_name": "bột khoai môn",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 150,
+          "note": null
+        },
+        {
+          "material_name": "trân châu",
+          "quantity": 60,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Trà sữa trân châu",
+      "items": [
+        {
+          "material_name": "cốt trà sữa",
+          "quantity": 200,
+          "note": null
+        },
+        {
+          "material_name": "trân châu",
+          "quantity": 60,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 150,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Trà cam quế",
+      "items": [
+        {
+          "material_name": "cosy quế",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "Mật ong",
+          "quantity": 10,
+          "note": null
+        },
+        {
+          "material_name": "siro quế",
+          "quantity": 5,
+          "note": null
+        },
+        {
+          "material_name": "Cam",
+          "quantity": 0.1,
+          "note": null
+        },
+        {
+          "material_name": "thanh quế",
+          "quantity": 1,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Trà gừng mật ong",
+      "items": [
+        {
+          "material_name": "cosy gừng",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "Mật ong",
+          "quantity": 15,
+          "note": null
+        },
+        {
+          "material_name": "gừng tươi",
+          "quantity": 3,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Trà hoa 7 màu",
+      "items": [
+        {
+          "material_name": "trà hoa 7 màu",
+          "quantity": 1,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Trà hoa cúc",
+      "items": [
+        {
+          "material_name": "Cosy hoa cúc",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "hoa cúc",
+          "quantity": 2,
+          "note": null
+        },
+        {
+          "material_name": "kì tử",
+          "quantity": 4,
+          "note": null
+        },
+        {
+          "material_name": "táo đỏ",
+          "quantity": 4,
+          "note": null
+        },
+        {
+          "material_name": "Mật ong",
+          "quantity": 15,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Trà chanh vàng",
+      "items": [
+        {
+          "material_name": "Cốt trà nhài",
+          "quantity": 130,
+          "note": null
+        },
+        {
+          "material_name": "Siro chanh vàng",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "quất",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 150,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Trà dâu nam mỹ",
+      "items": [
+        {
+          "material_name": "Cốt trà nhài",
+          "quantity": 130,
+          "note": null
+        },
+        {
+          "material_name": "Mứt dâu",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "quất",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 150,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 20,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Trà việt quất",
+      "items": [
+        {
+          "material_name": "Cốt trà nhài",
+          "quantity": 130,
+          "note": null
+        },
+        {
+          "material_name": "Mứt việt quất",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "quất",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 150,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 20,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Trà vải lài",
+      "items": [
+        {
+          "material_name": "Cốt trà nhài",
+          "quantity": 130,
+          "note": null
+        },
+        {
+          "material_name": "Mứt vải",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "quất",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 150,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 20,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Trà xoài nhiệt đới",
+      "items": [
+        {
+          "material_name": "Cốt trà nhài",
+          "quantity": 130,
+          "note": null
+        },
+        {
+          "material_name": "Mứt xoài",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "quất",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 150,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 20,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Trà ổi hồng",
+      "items": [
+        {
+          "material_name": "Cốt trà nhài",
+          "quantity": 130,
+          "note": null
+        },
+        {
+          "material_name": "Mứt ổi",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "quất",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 150,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 20,
+          "note": null
+        }
+      ]
+    }
+  ],
+  "product_variant_recipes": [
+    {
+      "product_name": "Cà phê bạc sỉu",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "CAFE CHUNG",
+          "quantity": 60,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 40,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 40,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 150,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Cà phê latte",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "CAFE CHUNG",
+          "quantity": 50,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 120,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 10,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 200,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 20,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Cà phê muối",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "CAFE CHUNG",
+          "quantity": 40,
+          "note": null
+        },
+        {
+          "material_name": "Kem muối",
+          "quantity": 40,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 150,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Cà phê kem trứng",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "CAFE CHUNG",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Kem trứng",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 150,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Cà phê nâu (nóng/đá)",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "CAFE CHUNG",
+          "quantity": 80,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 150,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Cà phê đen (nóng/đá)",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "CAFE ĐEN",
+          "quantity": 100,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 150,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Americano chanh vàng",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "Cà phê nước 2",
+          "quantity": 150,
+          "note": null
+        },
+        {
+          "material_name": "Siro chanh vàng",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 150,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 10,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Americano đào",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "Cà phê nước 2",
+          "quantity": 150,
+          "note": null
+        },
+        {
+          "material_name": "Siro đào",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 100,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Americano đá",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "Cà phê nước 2",
+          "quantity": 150,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 150,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Cold Brew đào",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "Coldbrew",
+          "quantity": 200,
+          "note": null
+        },
+        {
+          "material_name": "Siro đào",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 150,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Cold Brew chanh vàng",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "Coldbrew",
+          "quantity": 200,
+          "note": null
+        },
+        {
+          "material_name": "Siro chanh vàng",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 150,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 10,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Cold Brew đá",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "Coldbrew",
+          "quantity": 270,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 180,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Cacao bạc hà",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "Siro bạc hà",
+          "quantity": 25,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 100,
+          "note": null
+        },
+        {
+          "material_name": "bột cacao",
+          "quantity": 15,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 180,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 20,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Cacao kem muối",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 25,
+          "note": null
+        },
+        {
+          "material_name": "bột cacao",
+          "quantity": 15,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 180,
+          "note": null
+        },
+        {
+          "material_name": "Kem muối",
+          "quantity": 40,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Cacao nóng/đá",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "bột cacao",
+          "quantity": 15,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 40,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 180,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Cacao latte",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 120,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 10,
+          "note": null
+        },
+        {
+          "material_name": "bột cacao",
+          "quantity": 15,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 180,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 20,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Khoai môn kem muối",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "bột khoai môn",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 120,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 25,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 150,
+          "note": null
+        },
+        {
+          "material_name": "Kem muối",
+          "quantity": 40,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Khoai môn latte",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "bột khoai môn",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 120,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 25,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 180,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Khoai môn sữa dừa",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "bột khoai môn",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 120,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 25,
+          "note": null
+        },
+        {
+          "material_name": "cốt dừa",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 150,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Matcha latte",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "bột matcha",
+          "quantity": 4,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 120,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 20,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 180,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Matcha kem muối",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "bột matcha",
+          "quantity": 4,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 120,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 25,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 180,
+          "note": null
+        },
+        {
+          "material_name": "Kem muối",
+          "quantity": 40,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Matcha caramel",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "bột matcha",
+          "quantity": 4,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 120,
+          "note": null
+        },
+        {
+          "material_name": "sốt caramel Golden farm",
+          "quantity": 25,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 15,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 180,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Sữa chua lắc cafe",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 40,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "sữa chua",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "CAFE CHUNG",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 180,
+          "note": null
+        },
+        {
+          "material_name": "quất",
+          "quantity": 1,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Sữa chua lắc dâu",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "Mứt dâu",
+          "quantity": 40,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 40,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 10,
+          "note": null
+        },
+        {
+          "material_name": "quất",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "sữa chua",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 180,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Sữa chua lắc việt quất",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "Mứt việt quất",
+          "quantity": 40,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 40,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 10,
+          "note": null
+        },
+        {
+          "material_name": "quất",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "sữa chua",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 180,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Sữa chua lắc vải",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "Mứt vải",
+          "quantity": 40,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 40,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 10,
+          "note": null
+        },
+        {
+          "material_name": "quất",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "sữa chua",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 180,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Sữa chua lắc xoài",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "Mứt xoài",
+          "quantity": 40,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 40,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 10,
+          "note": null
+        },
+        {
+          "material_name": "quất",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "sữa chua",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 180,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Sữa chua lắc đá",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 40,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "quất",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "sữa chua",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 180,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Sữa chua lắc ổi",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "Mứt ổi",
+          "quantity": 40,
+          "note": null
+        },
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 40,
+          "note": null
+        },
+        {
+          "material_name": "Sữa đặc",
+          "quantity": 10,
+          "note": null
+        },
+        {
+          "material_name": "quất",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "sữa chua",
+          "quantity": 1,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 180,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Sữa tươi trân châu đường đen",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "Sữa tươi",
+          "quantity": 270,
+          "note": null
+        },
+        {
+          "material_name": "trân châu",
+          "quantity": 60,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 200,
+          "note": null
+        },
+        {
+          "material_name": "siro đường đen",
+          "quantity": 30,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Trà sữa bạc hà",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "Đá",
+          "quantity": 200,
+          "note": null
+        },
+        {
+          "material_name": "cốt trà sữa",
+          "quantity": 250,
+          "note": null
+        },
+        {
+          "material_name": "Siro bạc hà",
+          "quantity": 25,
+          "note": null
+        },
+        {
+          "material_name": "trân châu",
+          "quantity": 100,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Trà sữa kem muối",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "cốt trà sữa",
+          "quantity": 250,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 200,
+          "note": null
+        },
+        {
+          "material_name": "trân châu",
+          "quantity": 100,
+          "note": null
+        },
+        {
+          "material_name": "Kem muối",
+          "quantity": 40,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Trà sữa kem trứng",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "Kem trứng",
+          "quantity": 40,
+          "note": null
+        },
+        {
+          "material_name": "cốt trà sữa",
+          "quantity": 250,
+          "note": null
+        },
+        {
+          "material_name": "trân châu",
+          "quantity": 100,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 200,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Trà sữa khoai môn",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "cốt trà sữa",
+          "quantity": 200,
+          "note": null
+        },
+        {
+          "material_name": "bột khoai môn",
+          "quantity": 25,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 200,
+          "note": null
+        },
+        {
+          "material_name": "trân châu",
+          "quantity": 100,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Trà sữa trân châu",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "cốt trà sữa",
+          "quantity": 250,
+          "note": null
+        },
+        {
+          "material_name": "trân châu",
+          "quantity": 100,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 200,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Trà chanh vàng",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "Cốt trà nhài",
+          "quantity": 200,
+          "note": null
+        },
+        {
+          "material_name": "Siro chanh vàng",
+          "quantity": 40,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 30,
+          "note": null
+        },
+        {
+          "material_name": "quất",
+          "quantity": 2,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 220,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Trà dâu nam mỹ",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "Cốt trà nhài",
+          "quantity": 200,
+          "note": null
+        },
+        {
+          "material_name": "Mứt dâu",
+          "quantity": 40,
+          "note": null
+        },
+        {
+          "material_name": "quất",
+          "quantity": 2,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 220,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 30,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Trà việt quất",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "Cốt trà nhài",
+          "quantity": 200,
+          "note": null
+        },
+        {
+          "material_name": "Mứt việt quất",
+          "quantity": 40,
+          "note": null
+        },
+        {
+          "material_name": "quất",
+          "quantity": 2,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 220,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 30,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Trà vải lài",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "Cốt trà nhài",
+          "quantity": 200,
+          "note": null
+        },
+        {
+          "material_name": "Mứt vải",
+          "quantity": 40,
+          "note": null
+        },
+        {
+          "material_name": "quất",
+          "quantity": 2,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 220,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 30,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Trà xoài nhiệt đới",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "Cốt trà nhài",
+          "quantity": 200,
+          "note": null
+        },
+        {
+          "material_name": "Mứt xoài",
+          "quantity": 40,
+          "note": null
+        },
+        {
+          "material_name": "quất",
+          "quantity": 2,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 220,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 30,
+          "note": null
+        }
+      ]
+    },
+    {
+      "product_name": "Trà ổi hồng",
+      "variant_keyword": "Size L",
+      "items": [
+        {
+          "material_name": "Cốt trà nhài",
+          "quantity": 200,
+          "note": null
+        },
+        {
+          "material_name": "Mứt ổi",
+          "quantity": 40,
+          "note": null
+        },
+        {
+          "material_name": "quất",
+          "quantity": 2,
+          "note": null
+        },
+        {
+          "material_name": "Đá",
+          "quantity": 220,
+          "note": null
+        },
+        {
+          "material_name": "Đường nước",
+          "quantity": 30,
+          "note": null
+        }
+      ]
+    }
+  ],
+  "pos_modifier_rules": []
+}

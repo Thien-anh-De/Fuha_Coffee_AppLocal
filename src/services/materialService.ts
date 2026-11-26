@@ -235,4 +235,17 @@ export const materialService = {
   async seedExampleMaterials(): Promise<{ success: boolean; matchedProductId: string | null }> {
     return callDb<{ success: boolean; matchedProductId: string | null }>('seedExampleMaterials')
   },
+
+  async exportRecipesJson(): Promise<Record<string, unknown>> {
+    return callDb<Record<string, unknown>>('exportMaterialsAndRecipes')
+  },
+
+  async importRecipesJson(payload: Record<string, unknown>): Promise<{
+    success: boolean
+    addedMaterials: number
+    addedMaterialRecipes: number
+    addedProductRecipes: number
+  }> {
+    return callDb('importMaterialsAndRecipes', payload)
+  },
 }
