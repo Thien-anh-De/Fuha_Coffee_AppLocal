@@ -370,6 +370,7 @@ html, body {
   border: 1px solid #cbd5e1;
   border-radius: var(--radius-lg);
   color: var(--color-text-primary);
+  caret-color: #0f172a;
   outline: none;
   transition: all 0.2s ease;
 }

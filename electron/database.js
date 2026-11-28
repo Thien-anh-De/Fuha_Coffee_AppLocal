@@ -883,7 +883,7 @@ export const dbService = {
     db.prepare("UPDATE orders SET discount = ?, total = ? WHERE id = ?").run(discount, total, orderId)
   },
 
-  async payOrder(orderId, method, amount, cashierId) {
+  async payOrder(orderId, methodOrPayments, amount, cashierId) {
     const db = getDatabase()
     return runInTransaction(db, () => {
       const order = db.prepare("SELECT id, table_id, status, total FROM orders WHERE id = ?").get(orderId)
@@ -898,13 +898,23 @@ export const dbService = {
       }
 
       const { id: safeCashierId } = resolveValidProfileId(db, cashierId)
-      const payAmount = Number.isFinite(Number(amount)) ? Number(amount) : Number(order.total)
-      const payId = 'pay-' + crypto.randomUUID()
-
-      db.prepare(`
+      const insertPay = db.prepare(`
         INSERT INTO payments (id, order_id, method, amount, paid_at, cashier_id)
         VALUES (?, ?, ?, ?, datetime('now', 'localtime'), ?)
-      `).run(payId, orderId, method, payAmount, safeCashierId)
+      `)
+
+      if (Array.isArray(methodOrPayments)) {
+        const validPays = methodOrPayments.filter((p) => Number(p.amount) > 0)
+        if (validPays.length === 0) {
+          throw new Error('Vui lòng nhập số tiền thanh toán hợp lệ')
+        }
+        for (const p of validPays) {
+          insertPay.run('pay-' + crypto.randomUUID(), orderId, p.method, Number(p.amount), safeCashierId)
+        }
+      } else {
+        const payAmount = Number.isFinite(Number(amount)) ? Number(amount) : Number(order.total)
+        insertPay.run('pay-' + crypto.randomUUID(), orderId, methodOrPayments, payAmount, safeCashierId)
+      }
 
       db.prepare("UPDATE orders SET status = 'PAID', paid_at = datetime('now', 'localtime') WHERE id = ?").run(orderId)
 
@@ -914,6 +924,177 @@ export const dbService = {
 
       recordOrderMaterialConsumption(db, orderId, safeCashierId)
       return { success: true }
+    })
+  },
+
+  async splitAndPayOrder(orderId, selectedItems, payments, cashierId, discountAmount = 0) {
+    const db = getDatabase()
+    return runInTransaction(db, () => {
+      const order = db.prepare("SELECT * FROM orders WHERE id = ?").get(orderId)
+      if (!order) throw new Error('Không tìm thấy đơn hàng để tách bill')
+      if (order.status !== 'OPEN') throw new Error('Chỉ có thể tách bill với đơn hàng đang mở')
+
+      const currentItems = db.prepare("SELECT * FROM order_items WHERE order_id = ?").all(orderId)
+      if (currentItems.length === 0) throw new Error('Đơn hàng hiện tại không có món nào')
+
+      const itemMap = new Map(currentItems.map((it) => [it.id, it]))
+      const normalizedSelections = (selectedItems || [])
+        .map((sel) => ({
+          order_item_id: sel.order_item_id,
+          quantity: Math.floor(Number(sel.quantity) || 0),
+        }))
+        .filter((sel) => sel.quantity > 0)
+
+      if (normalizedSelections.length === 0) {
+        throw new Error('Vui lòng chọn ít nhất 1 món để thanh toán')
+      }
+
+      // Kiểm tra xem có chọn hết 100% đơn không
+      let selectedTotalQty = 0
+      let currentTotalQty = currentItems.reduce((s, it) => s + Number(it.quantity), 0)
+      for (const sel of normalizedSelections) {
+        const existing = itemMap.get(sel.order_item_id)
+        if (!existing) throw new Error('Món được chọn không còn tồn tại trong đơn')
+        if (sel.quantity > Number(existing.quantity)) {
+          throw new Error(`Số lượng tách của "${existing.product_name}" vượt quá số lượng trên bàn`)
+        }
+        selectedTotalQty += sel.quantity
+      }
+
+      const validPays = (payments || []).filter((p) => Number(p.amount) > 0)
+      if (validPays.length === 0) {
+        throw new Error('Vui lòng nhập phương thức và số tiền thanh toán')
+      }
+
+      const { id: safeCashierId } = resolveValidProfileId(db, cashierId)
+      const insertPay = db.prepare(`
+        INSERT INTO payments (id, order_id, method, amount, paid_at, cashier_id)
+        VALUES (?, ?, ?, ?, datetime('now', 'localtime'), ?)
+      `)
+
+      // Trường hợp trả hết toàn bộ các món còn lại -> thanh toán luôn đơn hiện tại
+      if (selectedTotalQty === currentTotalQty) {
+        const disc = Math.min(Number(order.subtotal), Math.max(0, Number(discountAmount) || 0))
+        const finalTotal = Math.max(0, Number(order.subtotal) - disc)
+        db.prepare("UPDATE orders SET discount = ?, total = ?, status = 'PAID', paid_at = datetime('now', 'localtime') WHERE id = ?").run(disc, finalTotal, orderId)
+        for (const p of validPays) {
+          insertPay.run('pay-' + crypto.randomUUID(), orderId, p.method, Number(p.amount), safeCashierId)
+        }
+        if (order.table_id) {
+          db.prepare("UPDATE tables SET status = 'AVAILABLE' WHERE id = ?").run(order.table_id)
+        }
+        recordOrderMaterialConsumption(db, orderId, safeCashierId)
+        return {
+          fullPaid: true,
+          paidOrderId: orderId,
+          invoice_number: order.invoice_number,
+          remainingCount: 0,
+          paidOrder: {
+            invoice_number: order.invoice_number,
+            subtotal: Number(order.subtotal),
+            discount: disc,
+            total: finalTotal,
+            items: currentItems.map((it) => ({
+              product_name: it.product_name,
+              quantity: Number(it.quantity),
+              unit_price: Number(it.unit_price),
+              subtotal: Number(it.subtotal),
+              note: it.note || undefined,
+            })),
+          },
+        }
+      }
+
+      // Trường hợp tách 1 phần -> tạo hóa đơn mới (PAID) cho phần được chọn, giữ phần còn lại ở đơn OPEN
+      const maxRow = db.prepare(`
+        SELECT COALESCE(MAX(CAST(SUBSTR(invoice_number, 3) AS INTEGER)), 0) as maxNum
+        FROM orders
+        WHERE date(created_at) = date('now', 'localtime')
+          AND invoice_number LIKE 'HD%'
+      `).get()
+      const nextNum = (maxRow ? Number(maxRow.maxNum) : 0) + 1
+      const newInvoiceNumber = `HD${String(nextNum).padStart(4, '0')}`
+      const newOrderId = 'ord-' + crypto.randomUUID()
+
+      let splitSubtotal = 0
+      const splitOrderItems = []
+      for (const sel of normalizedSelections) {
+        const existing = itemMap.get(sel.order_item_id)
+        const unitPrice = Number(existing.unit_price)
+        const lineSub = unitPrice * sel.quantity
+        splitSubtotal += lineSub
+        splitOrderItems.push({
+          id: 'oi-' + crypto.randomUUID(),
+          product_id: existing.product_id,
+          product_name: existing.product_name,
+          unit_price: unitPrice,
+          quantity: sel.quantity,
+          subtotal: lineSub,
+          note: existing.note || null,
+        })
+      }
+
+      const splitDiscount = Math.min(splitSubtotal, Math.max(0, Number(discountAmount) || 0))
+      const splitTotal = Math.max(0, splitSubtotal - splitDiscount)
+
+      db.prepare(`
+        INSERT INTO orders (id, table_id, cashier_id, invoice_number, status, subtotal, discount, total, created_at, paid_at)
+        VALUES (?, ?, ?, ?, 'PAID', ?, ?, ?, ?, datetime('now', 'localtime'))
+      `).run(newOrderId, order.table_id, safeCashierId, newInvoiceNumber, splitSubtotal, splitDiscount, splitTotal, order.created_at)
+
+      const insertSplitItem = db.prepare(`
+        INSERT INTO order_items (id, order_id, product_id, product_name, unit_price, quantity, subtotal, note)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      for (const sit of splitOrderItems) {
+        insertSplitItem.run(sit.id, newOrderId, sit.product_id, sit.product_name, sit.unit_price, sit.quantity, sit.subtotal, sit.note)
+      }
+
+      for (const p of validPays) {
+        insertPay.run('pay-' + crypto.randomUUID(), newOrderId, p.method, Number(p.amount), safeCashierId)
+      }
+
+      // Trừ số lượng ở đơn OPEN gốc
+      for (const sel of normalizedSelections) {
+        const existing = itemMap.get(sel.order_item_id)
+        const remainQty = Number(existing.quantity) - sel.quantity
+        if (remainQty <= 0) {
+          db.prepare("DELETE FROM order_items WHERE id = ?").run(existing.id)
+        } else {
+          const remainSub = Number(existing.unit_price) * remainQty
+          db.prepare("UPDATE order_items SET quantity = ?, subtotal = ? WHERE id = ?").run(remainQty, remainSub, existing.id)
+        }
+      }
+
+      // Tính lại tổng đơn OPEN còn lại
+      const remainSumRow = db.prepare("SELECT COALESCE(SUM(subtotal), 0) as s, COUNT(*) as c FROM order_items WHERE order_id = ?").get(orderId)
+      const remainSubtotal = Number(remainSumRow.s)
+      const remainDiscount = Math.min(remainSubtotal, Number(order.discount) || 0)
+      const remainTotal = Math.max(0, remainSubtotal - remainDiscount)
+      db.prepare("UPDATE orders SET subtotal = ?, discount = ?, total = ? WHERE id = ?").run(remainSubtotal, remainDiscount, remainTotal, orderId)
+
+      // Ghi nhận tiêu hao nguyên liệu cho hóa đơn mới vừa thanh toán
+      recordOrderMaterialConsumption(db, newOrderId, safeCashierId)
+
+      return {
+        fullPaid: false,
+        paidOrderId: newOrderId,
+        invoice_number: newInvoiceNumber,
+        remainingCount: Number(remainSumRow.c),
+        paidOrder: {
+          invoice_number: newInvoiceNumber,
+          subtotal: splitSubtotal,
+          discount: splitDiscount,
+          total: splitTotal,
+          items: splitOrderItems.map((it) => ({
+            product_name: it.product_name,
+            quantity: it.quantity,
+            unit_price: it.unit_price,
+            subtotal: it.subtotal,
+            note: it.note || undefined,
+          })),
+        },
+      }
     })
   },
 
@@ -1019,21 +1200,24 @@ export const dbService = {
     const sql = `
       SELECT o.*,
              t.name as tbl_name, t.status as tbl_status,
-             p.name as cashier_name, p.role as cashier_role,
-             pay.method as pay_method, pay.amount as pay_amount, pay.paid_at as pay_paid_at
+             p.name as cashier_name, p.role as cashier_role
       FROM orders o
       LEFT JOIN tables t ON o.table_id = t.id
       LEFT JOIN profiles p ON o.cashier_id = p.id
-      LEFT JOIN payments pay ON o.id = pay.order_id
       ${whereSql}
       ORDER BY o.created_at DESC
     `
     const orders = db.prepare(sql).all(...params)
 
-    // Lấy items cho mỗi đơn
+    // Lấy items và payments cho mỗi đơn (tránh nhân bản dòng khi 1 đơn có 2 phương thức thanh toán)
     const getItems = db.prepare("SELECT * FROM order_items WHERE order_id = ?")
+    const getPays = db.prepare("SELECT * FROM payments WHERE order_id = ?")
     return orders.map(o => {
       const items = getItems.all(o.id)
+      const pays = getPays.all(o.id).map(py => ({ ...py, amount: Number(py.amount) }))
+      const totalPaid = pays.reduce((s, py) => s + py.amount, 0)
+      const uniqueMethods = Array.from(new Set(pays.map(py => py.method)))
+      const primaryMethod = uniqueMethods.length > 1 ? 'MIXED' : (pays[0]?.method || undefined)
       return {
         ...o,
         subtotal: Number(o.subtotal),
@@ -1041,7 +1225,8 @@ export const dbService = {
         total: Number(o.total),
         table: o.table_id ? { id: o.table_id, name: o.tbl_name, status: o.tbl_status } : undefined,
         cashier: o.cashier_id ? { id: o.cashier_id, name: o.cashier_name, role: o.cashier_role } : undefined,
-        payment: o.pay_method ? { method: o.pay_method, amount: Number(o.pay_amount), paid_at: o.pay_paid_at } : undefined,
+        payment: pays.length > 0 ? { method: primaryMethod, amount: totalPaid, paid_at: pays[0].paid_at } : undefined,
+        payments: pays,
         items: items.map(i => ({ ...i, unit_price: Number(i.unit_price), subtotal: Number(i.subtotal) }))
       }
     })
@@ -1052,17 +1237,19 @@ export const dbService = {
     const o = db.prepare(`
       SELECT o.*,
              t.name as tbl_name, t.status as tbl_status,
-             p.name as cashier_name, p.role as cashier_role,
-             pay.method as pay_method, pay.amount as pay_amount, pay.paid_at as pay_paid_at
+             p.name as cashier_name, p.role as cashier_role
       FROM orders o
       LEFT JOIN tables t ON o.table_id = t.id
       LEFT JOIN profiles p ON o.cashier_id = p.id
-      LEFT JOIN payments pay ON o.id = pay.order_id
       WHERE o.id = ?
     `).get(id)
 
     if (!o) return null
     const items = db.prepare("SELECT * FROM order_items WHERE order_id = ?").all(id)
+    const pays = db.prepare("SELECT * FROM payments WHERE order_id = ?").all(id).map(py => ({ ...py, amount: Number(py.amount) }))
+    const totalPaid = pays.reduce((s, py) => s + py.amount, 0)
+    const uniqueMethods = Array.from(new Set(pays.map(py => py.method)))
+    const primaryMethod = uniqueMethods.length > 1 ? 'MIXED' : (pays[0]?.method || undefined)
     return {
       ...o,
       subtotal: Number(o.subtotal),
@@ -1070,7 +1257,8 @@ export const dbService = {
       total: Number(o.total),
       table: o.table_id ? { id: o.table_id, name: o.tbl_name, status: o.tbl_status } : undefined,
       cashier: o.cashier_id ? { id: o.cashier_id, name: o.cashier_name, role: o.cashier_role } : undefined,
-      payment: o.pay_method ? { method: o.pay_method, amount: Number(o.pay_amount), paid_at: o.pay_paid_at } : undefined,
+      payment: pays.length > 0 ? { method: primaryMethod, amount: totalPaid, paid_at: pays[0].paid_at } : undefined,
+      payments: pays,
       items: items.map(i => ({ ...i, unit_price: Number(i.unit_price), subtotal: Number(i.subtotal) }))
     }
   },

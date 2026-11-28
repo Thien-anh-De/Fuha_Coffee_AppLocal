@@ -50,8 +50,35 @@ export const orderService = {
     await callDb('setOrderDiscount', orderId, discount)
   },
 
-  async pay(orderId: string, method: PaymentMethod, amount: number, cashierId: string): Promise<void> {
-    await callDb('payOrder', orderId, method, amount, cashierId)
+  async pay(
+    orderId: string,
+    methodOrPayments: PaymentMethod | { method: PaymentMethod; amount: number }[],
+    amount: number,
+    cashierId: string
+  ): Promise<void> {
+    await callDb('payOrder', orderId, methodOrPayments, amount, cashierId)
+  },
+
+  async splitAndPay(
+    orderId: string,
+    selectedItems: { order_item_id: string; quantity: number }[],
+    payments: { method: PaymentMethod; amount: number }[],
+    cashierId: string,
+    discountAmount: number = 0
+  ): Promise<{
+    fullPaid: boolean
+    paidOrderId: string
+    invoice_number: string
+    remainingCount: number
+    paidOrder: {
+      invoice_number: string
+      subtotal: number
+      discount: number
+      total: number
+      items: { product_name: string; quantity: number; unit_price: number; subtotal: number; note?: string }[]
+    }
+  }> {
+    return callDb('splitAndPayOrder', orderId, selectedItems, payments, cashierId, discountAmount)
   },
 
   async getAll(filters?: {

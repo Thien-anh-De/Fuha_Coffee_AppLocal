@@ -6,9 +6,10 @@ import { tableService } from '@/services/tableService'
 import { categoryService } from '@/services/categoryService'
 import { productService } from '@/services/productService'
 import { orderService } from '@/services/orderService'
+import { materialService } from '@/services/materialService'
 import { ToastContainer, LoadingSpinner, EmptyState, Modal } from '@/components/ui'
-import { formatCurrency, matchSearchWithAcronym } from '@/utils/helpers'
-import type { CoffeeTable, Category, Product, Order, OrderItem, CartItem, ToppingOption } from '@/types'
+import { formatCurrency, matchSearchWithAcronym, removeVietnameseTones } from '@/utils/helpers'
+import type { CoffeeTable, Category, Product, Order, OrderItem, CartItem, ToppingOption, ProductRecipeSummary } from '@/types'
 import {
   CupSoda,
   Minus,
@@ -27,22 +28,33 @@ import {
 } from 'lucide-react'
 import DailySalesReportSheet from '@/components/DailySalesReportSheet'
 import { printerService } from '@/services/printerService'
-import { printReceipt, type PrintableOrder } from '@/utils/printer'
+import { printReceipt, printBarTicket, printAutoOnPay, type PrintableOrder } from '@/utils/printer'
+
+type SelectedToppingItem = ToppingOption & { qty: number }
 
 const ICE_OPTIONS = [
   '100% Đá (chuẩn)',
-  'Ít đá (50%)',
+  '70% Đá',
+  '50% Đá',
+  '30% Đá',
   'Không đá',
   'Đá riêng',
-  'Uống nóng',
 ]
 
 const SUGAR_OPTIONS = [
   '100% Đường (chuẩn)',
   '70% Đường',
-  '50% Đường (ít ngọt)',
+  '50% Đường',
   '30% Đường',
   'Không đường',
+]
+
+const MILK_OPTIONS = [
+  '100% Sữa đặc (chuẩn)',
+  '70% Sữa đặc',
+  '50% Sữa đặc',
+  '30% Sữa đặc',
+  'Không sữa đặc',
 ]
 
 const EXTRA_OPTIONS = [
@@ -74,7 +86,19 @@ export default function PosPage() {
   const [discountPct, setDiscountPct] = useState<number | ''>(0)
   const [showPayment, setShowPayment] = useState(false)
   const [paying, setPaying] = useState(false)
+  const [payTab, setPayTab] = useState<'FULL' | 'SPLIT'>('FULL')
+  const [printCustomerBill, setPrintCustomerBill] = useState(false)
+  const [showMixedFull, setShowMixedFull] = useState(false)
+  const [mixedCash, setMixedCash] = useState<number>(0)
+  const [mixedBank, setMixedBank] = useState<number>(0)
+  const [splitSelections, setSplitSelections] = useState<Record<string, number>>({})
+  const [splitMethod, setSplitMethod] = useState<'CASH' | 'BANK_TRANSFER' | 'MIXED'>('CASH')
+  const [splitMixedCash, setSplitMixedCash] = useState<number>(0)
+  const [splitMixedBank, setSplitMixedBank] = useState<number>(0)
+  const [splitDiscount, setSplitDiscount] = useState<number>(0)
+
   const [openOrders, setOpenOrders] = useState<Order[]>([])
+  const [productRecipes, setProductRecipes] = useState<ProductRecipeSummary[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [showSearchDropdown, setShowSearchDropdown] = useState(false)
   const [highlightedSearchIndex, setHighlightedSearchIndex] = useState(0)
@@ -85,8 +109,9 @@ export default function PosPage() {
   const [editBasePrice, setEditBasePrice] = useState<number>(0)
   const [selectedIce, setSelectedIce] = useState<string>('100% Đá (chuẩn)')
   const [selectedSugar, setSelectedSugar] = useState<string>('100% Đường (chuẩn)')
+  const [selectedMilk, setSelectedMilk] = useState<string>('100% Sữa đặc (chuẩn)')
   const [selectedSize, setSelectedSize] = useState<'M' | 'L'>('M')
-  const [selectedToppings, setSelectedToppings] = useState<ToppingOption[]>([])
+  const [selectedToppings, setSelectedToppings] = useState<SelectedToppingItem[]>([])
   const [selectedExtras, setSelectedExtras] = useState<string[]>([])
   const [customNoteText, setCustomNoteText] = useState<string>('')
   const [editQuantity, setEditQuantity] = useState<number>(1)
@@ -99,16 +124,18 @@ export default function PosPage() {
   // Load data
   const loadData = useCallback(async () => {
     try {
-      const [t, c, p, openOrds] = await Promise.all([
+      const [t, c, p, openOrds, recipesSum] = await Promise.all([
         tableService.getActive(),
         categoryService.getActive(),
         productService.getActive(),
         orderService.getAll({ status: 'OPEN' }),
+        materialService.getAllProductRecipesSummary().catch(() => []),
       ])
       setTables(t)
       setCategories(c)
       setProducts(p)
       setOpenOrders(openOrds)
+      setProductRecipes(recipesSum)
     } catch {
       toastError('Không thể tải dữ liệu')
     } finally {
@@ -136,7 +163,7 @@ export default function PosPage() {
           break
         case 'F9':
           e.preventDefault()
-          if (orderItems.length > 0) setShowPayment(true)
+          if (orderItems.length > 0) document.getElementById('btn-checkout-pay')?.click()
           break
         case 'F4':
           e.preventDefault()
@@ -235,15 +262,38 @@ export default function PosPage() {
     return !name.includes('vặt') && !name.includes('nhanh') && !name.includes('topping')
   }
 
+  // Kiểm tra công thức món để hiển thị dòng Đường / Sữa đặc tương ứng
+  const getProductSweetenerConfig = (productId?: string) => {
+    const rec = productRecipes.find((r) => r.product_id === productId)
+    if (!rec || rec.ingredients.length === 0) {
+      return { showSugar: true, showMilk: false }
+    }
+    let hasSugar = false
+    let hasMilk = false
+    for (const ing of rec.ingredients) {
+      const nameNoTone = removeVietnameseTones(ing.material_name || '')
+      if (nameNoTone.includes('sua dac')) {
+        hasMilk = true
+      }
+      if ((nameNoTone.includes('duong') && !nameNoTone.includes('khong duong')) || nameNoTone.includes('siro')) {
+        hasSugar = true
+      }
+    }
+    return { showSugar: hasSugar, showMilk: hasMilk }
+  }
+
   // Build clean note text
   const buildNote = (
     size: 'M' | 'L',
     ice: string,
     sugar: string,
+    milk: string,
     extras: string[],
-    toppings: ToppingOption[],
+    toppings: SelectedToppingItem[],
     customText: string,
-    isDrink: boolean
+    isDrink: boolean,
+    showSugar: boolean,
+    showMilk: boolean
   ): string => {
     const parts: string[] = []
 
@@ -260,8 +310,11 @@ export default function PosPage() {
       if (ice && !ice.startsWith('100% Đá')) {
         parts.push(ice)
       }
-      if (sugar && !sugar.startsWith('100% Đường')) {
+      if (showSugar && sugar && !sugar.startsWith('100% Đường')) {
         parts.push(sugar)
+      }
+      if (showMilk && milk && !milk.startsWith('100% Sữa đặc')) {
+        parts.push(milk)
       }
     }
 
@@ -290,12 +343,16 @@ export default function PosPage() {
     const hasSizeL = /\bsize\s*l\b/i.test(note)
     const foundIce = ICE_OPTIONS.find((o) => note.includes(o)) || '100% Đá (chuẩn)'
     const foundSugar = SUGAR_OPTIONS.find((o) => note.includes(o)) || '100% Đường (chuẩn)'
+    const foundMilk = MILK_OPTIONS.find((o) => note.includes(o)) || '100% Sữa đặc (chuẩn)'
     const foundExtras = EXTRA_OPTIONS.filter((e) => note.includes(e))
-    const foundToppings = availableToppings.filter((t) => note.toLowerCase().includes(t.name.toLowerCase()))
+    const foundToppings: SelectedToppingItem[] = availableToppings
+      .filter((t) => note.toLowerCase().includes(t.name.toLowerCase()))
+      .map((t) => ({ ...t, qty: item.quantity }))
 
     setSelectedSize(hasSizeL ? 'L' : 'M')
     setSelectedIce(foundIce)
     setSelectedSugar(foundSugar)
+    setSelectedMilk(foundMilk)
     setSelectedExtras(foundExtras)
     setSelectedToppings(foundToppings)
 
@@ -303,6 +360,7 @@ export default function PosPage() {
     cleaned = cleaned.replace(/\+?\s*size\s*l\s*(\(\+[^)]+\))?/gi, '')
     ICE_OPTIONS.forEach((o) => { cleaned = cleaned.replace(o, '') })
     SUGAR_OPTIONS.forEach((o) => { cleaned = cleaned.replace(o, '') })
+    MILK_OPTIONS.forEach((o) => { cleaned = cleaned.replace(o, '') })
     EXTRA_OPTIONS.forEach((o) => { cleaned = cleaned.replace(o, '') })
     availableToppings.forEach((t) => {
       cleaned = cleaned.replace(new RegExp(`\\+?\\s*${t.name}\\s*(\\(\\+[^)]+\\))?`, 'gi'), '')
@@ -322,7 +380,7 @@ export default function PosPage() {
     }
   }
 
-  // Toggle topping in edit modal: updates toppings and adjusts editUnitPrice
+  // Toggle topping in edit modal: updates toppings (default qty = editQuantity) and adjusts editUnitPrice
   const toggleTopping = (top: ToppingOption) => {
     const isSelected = selectedToppings.some(
       (t) => t.name.toLowerCase() === top.name.toLowerCase()
@@ -331,9 +389,30 @@ export default function PosPage() {
       setSelectedToppings(selectedToppings.filter((t) => t.name.toLowerCase() !== top.name.toLowerCase()))
       setEditUnitPrice((prev) => Math.max(0, prev - top.price))
     } else {
-      setSelectedToppings([...selectedToppings, top])
+      setSelectedToppings([...selectedToppings, { ...top, qty: editQuantity }])
       setEditUnitPrice((prev) => prev + top.price)
     }
+  }
+
+  const updateToppingQty = (topName: string, nextQty: number) => {
+    const clamped = Math.max(1, Math.min(editQuantity, nextQty))
+    setSelectedToppings((prev) =>
+      prev.map((t) => (t.name.toLowerCase() === topName.toLowerCase() ? { ...t, qty: clamped } : t))
+    )
+  }
+
+  const updateEditQuantity = (nextQty: number) => {
+    const clamped = Math.max(1, nextQty)
+    const oldQty = editQuantity
+    setEditQuantity(clamped)
+    setSelectedToppings((prev) =>
+      prev.map((t) => {
+        if (t.qty === oldQty) {
+          return { ...t, qty: clamped }
+        }
+        return { ...t, qty: Math.min(t.qty, clamped) }
+      })
+    )
   }
 
   const toggleExtra = (extra: string) => {
@@ -344,32 +423,112 @@ export default function PosPage() {
     }
   }
 
-  // Save changes from modal back to order item on the bill
+  // Save changes from modal back to order item on the bill (tự động tách dòng nếu số lượng topping < số lượng cốc)
   const handleSaveItemEdit = async () => {
     if (!editingOrderItem || !currentOrder) return
 
     const prod = products.find((p) => p.id === editingOrderItem.product_id)
     const isDrink = isDrinkCategory(prod?.category_id)
-    const note = buildNote(
-      selectedSize,
-      selectedIce,
-      selectedSugar,
-      selectedExtras,
-      selectedToppings,
-      customNoteText,
-      isDrink
-    )
+    const { showSugar, showMilk } = getProductSweetenerConfig(editingOrderItem.product_id)
+    const sizeExtra = isDrink && selectedSize === 'L' ? sizeLSurcharge : 0
 
     try {
-      await orderService.updateItemDetails(
-        editingOrderItem.id,
-        currentOrder.id,
-        note,
-        editUnitPrice,
-        editQuantity,
-        editingOrderItem.product_name
-      )
-      success(`Đã cập nhật ${editingOrderItem.product_name}`)
+      const hasSplitToppings = editQuantity > 1 && selectedToppings.some((t) => t.qty < editQuantity)
+
+      if (!hasSplitToppings) {
+        const note = buildNote(
+          selectedSize,
+          selectedIce,
+          selectedSugar,
+          selectedMilk,
+          selectedExtras,
+          selectedToppings,
+          customNoteText,
+          isDrink,
+          showSugar,
+          showMilk
+        )
+        await orderService.updateItemDetails(
+          editingOrderItem.id,
+          currentOrder.id,
+          note,
+          editUnitPrice,
+          editQuantity,
+          editingOrderItem.product_name
+        )
+        success(`Đã cập nhật ${editingOrderItem.product_name}`)
+      } else {
+        // Phân bổ topping theo từng cốc và gom các cốc giống nhau thành nhóm
+        const groupMap = new Map<string, { qty: number; toppings: SelectedToppingItem[] }>()
+        for (let cupIdx = 0; cupIdx < editQuantity; cupIdx++) {
+          const cupTops = selectedToppings.filter((t) => cupIdx < t.qty)
+          const sig = cupTops.map((t) => t.name.toLowerCase()).sort().join('|')
+          const existingGroup = groupMap.get(sig)
+          if (existingGroup) {
+            existingGroup.qty += 1
+          } else {
+            groupMap.set(sig, { qty: 1, toppings: cupTops })
+          }
+        }
+
+        const groups = Array.from(groupMap.values())
+        // Giữ phần basePrice nếu thu ngân có chỉnh tay đơn giá gốc
+        const fullToppingSum = selectedToppings.reduce((s, t) => s + t.price, 0)
+        const effectiveBaseWithSize = Math.max(0, editUnitPrice - fullToppingSum)
+
+        // Nhóm đầu tiên cập nhật vào dòng hiện tại
+        const first = groups[0]
+        const firstPrice = effectiveBaseWithSize + first.toppings.reduce((s, t) => s + t.price, 0)
+        const firstNote = buildNote(
+          selectedSize,
+          selectedIce,
+          selectedSugar,
+          selectedMilk,
+          selectedExtras,
+          first.toppings,
+          customNoteText,
+          isDrink,
+          showSugar,
+          showMilk
+        )
+        await orderService.updateItemDetails(
+          editingOrderItem.id,
+          currentOrder.id,
+          firstNote,
+          firstPrice,
+          first.qty,
+          editingOrderItem.product_name
+        )
+
+        // Các nhóm còn lại thêm thành dòng mới
+        for (let i = 1; i < groups.length; i++) {
+          const g = groups[i]
+          const gPrice = effectiveBaseWithSize + g.toppings.reduce((s, t) => s + t.price, 0)
+          const gNote = buildNote(
+            selectedSize,
+            selectedIce,
+            selectedSugar,
+            selectedMilk,
+            selectedExtras,
+            g.toppings,
+            customNoteText,
+            isDrink,
+            showSugar,
+            showMilk
+          )
+          await orderService.addItem(currentOrder.id, {
+            product_id: editingOrderItem.product_id,
+            product_name: editingOrderItem.product_name,
+            unit_price: gPrice,
+            quantity: g.qty,
+            subtotal: gPrice * g.qty,
+            note: gNote || undefined,
+          })
+        }
+
+        void sizeExtra
+        success(`Đã tự tách thành ${groups.length} dòng cho ${editingOrderItem.product_name}`)
+      }
 
       const updated = await orderService.getOpenByTable(currentOrder.table_id)
       if (updated) {
@@ -494,7 +653,24 @@ export default function PosPage() {
     }
   }
 
-  // Pay
+  const openPaymentModal = () => {
+    const finalSubtotal = currentOrder?.subtotal ?? orderItems.reduce((s, i) => s + i.subtotal, 0)
+    const finalTotal = Math.max(0, finalSubtotal - Math.max(0, discount))
+    const half = Math.round(finalTotal / 2)
+    setPayTab('FULL')
+    setShowMixedFull(false)
+    setMixedCash(half)
+    setMixedBank(Math.max(0, finalTotal - half))
+    setSplitSelections({})
+    setSplitMethod('CASH')
+    setSplitMixedCash(0)
+    setSplitMixedBank(0)
+    setSplitDiscount(0)
+    setPrintCustomerBill(false)
+    setShowPayment(true)
+  }
+
+  // Pay Full (Single method)
   const handlePay = async (method: 'CASH' | 'BANK_TRANSFER') => {
     if (!currentOrder || !user || paying) return
     setPaying(true)
@@ -503,7 +679,6 @@ export default function PosPage() {
       const finalDiscount = Math.max(0, discount)
       const finalTotal = Math.max(0, finalSubtotal - finalDiscount)
 
-      // Đồng bộ giảm giá nếu thu ngân nhập tay nhưng chưa bấm nút Tick xác nhận
       if (finalDiscount !== (currentOrder.discount ?? 0)) {
         await orderService.setDiscount(currentOrder.id, finalDiscount)
       }
@@ -514,7 +689,7 @@ export default function PosPage() {
         invoice_number: currentOrder.invoice_number,
         table_name: selectedTable?.name ?? 'Mang về',
         cashier_name: profile?.name ?? 'Thu ngân',
-        created_at: new Date().toISOString(),
+        created_at: currentOrder.created_at || new Date().toISOString(),
         items: orderItems.map((i) => ({
           product_name: i.product_name,
           quantity: i.quantity,
@@ -531,11 +706,8 @@ export default function PosPage() {
       setShowPayment(false)
 
       const settings = printerService.getSettings()
-      if (settings.autoPrintOnPay) {
-        printReceipt(paidData, settings, false)
-      }
+      printAutoOnPay(paidData, settings, printCustomerBill)
 
-      // Trở về thẳng màn hình chọn bàn, không hiện thông báo/modal rườm rà
       setSelectedTable(null)
       setCurrentOrder(null)
       setOrderItems([])
@@ -550,6 +722,149 @@ export default function PosPage() {
     }
   }
 
+  // Pay Full (Mixed: Tiền mặt + Chuyển khoản)
+  const handlePayMixedFull = async () => {
+    if (!currentOrder || !user || paying) return
+    const finalSubtotal = currentOrder.subtotal ?? orderItems.reduce((s, i) => s + i.subtotal, 0)
+    const finalDiscount = Math.max(0, discount)
+    const finalTotal = Math.max(0, finalSubtotal - finalDiscount)
+    const cashVal = Math.max(0, Number(mixedCash) || 0)
+    const bankVal = Math.max(0, Number(mixedBank) || 0)
+
+    if (cashVal + bankVal !== finalTotal) {
+      toastError(`Tổng Tiền mặt (${formatCurrency(cashVal)}) + Chuyển khoản (${formatCurrency(bankVal)}) phải bằng ${formatCurrency(finalTotal)}`)
+      return
+    }
+
+    setPaying(true)
+    try {
+      if (finalDiscount !== (currentOrder.discount ?? 0)) {
+        await orderService.setDiscount(currentOrder.id, finalDiscount)
+      }
+      const paymentsPayload: { method: 'CASH' | 'BANK_TRANSFER'; amount: number }[] = []
+      if (cashVal > 0) paymentsPayload.push({ method: 'CASH', amount: cashVal })
+      if (bankVal > 0) paymentsPayload.push({ method: 'BANK_TRANSFER', amount: bankVal })
+
+      await orderService.pay(currentOrder.id, paymentsPayload, finalTotal, user.id)
+
+      const paidData: PrintableOrder = {
+        invoice_number: currentOrder.invoice_number,
+        table_name: selectedTable?.name ?? 'Mang về',
+        cashier_name: profile?.name ?? 'Thu ngân',
+        created_at: currentOrder.created_at || new Date().toISOString(),
+        items: orderItems.map((i) => ({
+          product_name: i.product_name,
+          quantity: i.quantity,
+          unit_price: i.unit_price,
+          subtotal: i.subtotal,
+          note: i.note,
+        })),
+        subtotal: finalSubtotal,
+        discount: finalDiscount,
+        total: finalTotal,
+        payment_method: paymentsPayload.length > 1 ? 'MIXED' : paymentsPayload[0]?.method,
+        payments: paymentsPayload,
+      }
+
+      setShowPayment(false)
+      const settings = printerService.getSettings()
+      printAutoOnPay(paidData, settings, printCustomerBill)
+
+      setSelectedTable(null)
+      setCurrentOrder(null)
+      setOrderItems([])
+      setDiscount(0)
+      loadData()
+      success(`Đã thanh toán ${formatCurrency(finalTotal)} (TM ${formatCurrency(cashVal)} + CK ${formatCurrency(bankVal)})`)
+    } catch (err: unknown) {
+      toastError(err instanceof Error ? `Thanh toán thất bại: ${err.message}` : 'Thanh toán thất bại')
+    } finally {
+      setPaying(false)
+    }
+  }
+
+  // Split & Pay partial bill
+  const handleSplitAndPay = async () => {
+    if (!currentOrder || !user || paying) return
+    const selectedEntries = Object.entries(splitSelections)
+      .filter(([, qty]) => qty > 0)
+      .map(([order_item_id, quantity]) => ({ order_item_id, quantity }))
+
+    if (selectedEntries.length === 0) {
+      toastError('Vui lòng tích chọn ít nhất 1 món để tách thanh toán')
+      return
+    }
+
+    const splitSub = orderItems.reduce((sum, it) => {
+      const q = splitSelections[it.id] || 0
+      return sum + q * it.unit_price
+    }, 0)
+    const discVal = Math.min(splitSub, Math.max(0, Number(splitDiscount) || 0))
+    const splitTot = Math.max(0, splitSub - discVal)
+
+    let paymentsPayload: { method: 'CASH' | 'BANK_TRANSFER'; amount: number }[] = []
+    if (splitMethod === 'MIXED') {
+      const c = Math.max(0, Number(splitMixedCash) || 0)
+      const b = Math.max(0, Number(splitMixedBank) || 0)
+      if (c + b !== splitTot) {
+        toastError(`Tổng Tiền mặt + Chuyển khoản phải bằng ${formatCurrency(splitTot)}`)
+        return
+      }
+      if (c > 0) paymentsPayload.push({ method: 'CASH', amount: c })
+      if (b > 0) paymentsPayload.push({ method: 'BANK_TRANSFER', amount: b })
+    } else {
+      paymentsPayload = [{ method: splitMethod, amount: splitTot }]
+    }
+
+    setPaying(true)
+    try {
+      const res = await orderService.splitAndPay(currentOrder.id, selectedEntries, paymentsPayload, user.id, discVal)
+
+      const paidData: PrintableOrder = {
+        invoice_number: res.paidOrder.invoice_number,
+        table_name: selectedTable?.name ?? 'Mang về',
+        cashier_name: profile?.name ?? 'Thu ngân',
+        created_at: currentOrder.created_at || new Date().toISOString(),
+        items: res.paidOrder.items,
+        subtotal: res.paidOrder.subtotal,
+        discount: res.paidOrder.discount,
+        total: res.paidOrder.total,
+        payment_method: paymentsPayload.length > 1 ? 'MIXED' : paymentsPayload[0]?.method,
+        payments: paymentsPayload,
+      }
+
+      const settings = printerService.getSettings()
+      printAutoOnPay(paidData, settings, printCustomerBill)
+
+      if (res.fullPaid || res.remainingCount === 0) {
+        setShowPayment(false)
+        setSelectedTable(null)
+        setCurrentOrder(null)
+        setOrderItems([])
+        setDiscount(0)
+        loadData()
+        success(`Đã thanh toán hết hóa đơn ${res.invoice_number} (${formatCurrency(splitTot)})`)
+      } else {
+        const updated = await orderService.getOpenByTable(currentOrder.table_id)
+        if (updated) {
+          setCurrentOrder(updated)
+          setOrderItems(updated.items ?? [])
+          setDiscount(updated.discount ?? 0)
+        }
+        setSplitSelections({})
+        setSplitDiscount(0)
+        setSplitMixedCash(0)
+        setSplitMixedBank(0)
+        loadData()
+        success(`Đã tách & thanh toán ${res.invoice_number} (${formatCurrency(splitTot)}). Bàn còn ${res.remainingCount} dòng món.`)
+      }
+    } catch (err: unknown) {
+      toastError(err instanceof Error ? `Lỗi tách bill: ${err.message}` : 'Lỗi tách bill')
+    } finally {
+      setPaying(false)
+    }
+  }
+
   // Print pre-bill (phiếu tạm tính)
   const handlePrintPreBill = () => {
     if (!currentOrder || orderItems.length === 0) return
@@ -557,7 +872,7 @@ export default function PosPage() {
       invoice_number: currentOrder.invoice_number,
       table_name: selectedTable?.name ?? 'Mang về',
       cashier_name: profile?.name ?? 'Thu ngân',
-      created_at: new Date().toISOString(),
+      created_at: currentOrder.created_at || new Date().toISOString(),
       items: orderItems.map((i) => ({
         product_name: i.product_name,
         quantity: i.quantity,
@@ -571,6 +886,29 @@ export default function PosPage() {
     }
     printReceipt(preBillData, undefined, true)
     success('Đã gửi lệnh in tạm tính')
+  }
+
+  // Print Bar ticket (phiếu Quầy Pha Chế gọn tiết kiệm giấy)
+  const handlePrintBarTicket = () => {
+    if (!currentOrder || orderItems.length === 0) return
+    const barData: PrintableOrder = {
+      invoice_number: currentOrder.invoice_number,
+      table_name: selectedTable?.name ?? 'Mang về',
+      cashier_name: profile?.name ?? 'Thu ngân',
+      created_at: currentOrder.created_at || new Date().toISOString(),
+      items: orderItems.map((i) => ({
+        product_name: i.product_name,
+        quantity: i.quantity,
+        unit_price: i.unit_price,
+        subtotal: i.subtotal,
+        note: i.note,
+      })),
+      subtotal,
+      discount,
+      total,
+    }
+    printBarTicket(barData)
+    success('Đã gửi lệnh in phiếu Quầy Pha Chế (Bar)')
   }
 
   // Back to table selection (bấm Rời bàn / Quay lại)
@@ -605,19 +943,53 @@ export default function PosPage() {
     setActiveCategory('all')
   }
 
-  const filteredProducts = products.filter((p) => {
-    if (searchQuery.trim()) {
-      const matchesSearch = matchSearchWithAcronym(p.name, searchQuery)
-      if (!matchesSearch) return false
+  const filteredProducts = useMemo(() => {
+    const catMap = new Map(categories.map((c) => [c.id, c]))
 
-      if (activeCategory !== 'all' && p.category_id !== activeCategory) {
-        return false
-      }
-      return true
+    const getMatchaSubGroupRank = (prodName: string): number => {
+      const n = removeVietnameseTones(prodName)
+      if (n.includes('matcha')) return 1
+      if (n.includes('cacao')) return 2
+      if (n.includes('khoai mon')) return 3
+      return 4
     }
 
-    return activeCategory === 'all' ? true : p.category_id === activeCategory
-  })
+    const filtered = products.filter((p) => {
+      if (searchQuery.trim()) {
+        const matchesSearch = matchSearchWithAcronym(p.name, searchQuery)
+        if (!matchesSearch) return false
+        if (activeCategory !== 'all' && p.category_id !== activeCategory) {
+          return false
+        }
+        return true
+      }
+      return activeCategory === 'all' ? true : p.category_id === activeCategory
+    })
+
+    return [...filtered].sort((a, b) => {
+      const catA = catMap.get(a.category_id)
+      const catB = catMap.get(b.category_id)
+      const orderA = catA?.sort_order ?? 999
+      const orderB = catB?.sort_order ?? 999
+      if (orderA !== orderB) return orderA - orderB
+
+      // Riêng mục Matcha, Cacao, Khoai môn: sắp xếp theo nhóm Matcha -> Cacao -> Khoai môn rồi mới đến giá
+      const catNameNoTone = removeVietnameseTones(catA?.name || '')
+      if (
+        catNameNoTone.includes('matcha') ||
+        catNameNoTone.includes('cacao') ||
+        catNameNoTone.includes('khoai mon')
+      ) {
+        const rankA = getMatchaSubGroupRank(a.name)
+        const rankB = getMatchaSubGroupRank(b.name)
+        if (rankA !== rankB) return rankA - rankB
+      }
+
+      // Mặc định trong mỗi danh mục (và mỗi nhóm Matcha/Cacao/Khoai môn): rẻ đến đắt
+      if (a.price !== b.price) return a.price - b.price
+      return a.name.localeCompare(b.name, 'vi')
+    })
+  }, [products, categories, searchQuery, activeCategory])
 
   // Danh sách món gợi ý khi tìm kiếm xổ xuống (tìm kiếm trên toàn bộ menu món)
   const searchSuggestions = useMemo(() => {
@@ -673,7 +1045,7 @@ export default function PosPage() {
       }
       if (e.key === 'F9' && selectedTable && orderItems.length > 0) {
         e.preventDefault()
-        setShowPayment(true)
+        document.getElementById('btn-checkout-pay')?.click()
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -1597,20 +1969,35 @@ export default function PosPage() {
             </div>
           </div>
 
-          {/* Pre-bill & Pay Button */}
+            {/* Pre-bill, In Bar & Pay Button */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.35rem' }}>
-            {printerService.getSettings().printPreBill && orderItems.length > 0 && (
-              <button
-                id="btn-pre-bill"
-                type="button"
-                className="btn btn-secondary"
-                onClick={handlePrintPreBill}
-                title="In phiếu tạm tính cho khách kiểm tra trước khi tính tiền [F4]"
-                style={{ height: '34px', fontSize: '0.8125rem', fontWeight: 600 }}
-              >
-                <Printer size={14} />
-                In tạm tính (Pre-bill)
-              </button>
+            {orderItems.length > 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: printerService.getSettings().printPreBill ? '1fr 1fr' : '1fr', gap: '0.35rem' }}>
+                {printerService.getSettings().printPreBill && (
+                  <button
+                    id="btn-pre-bill"
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={handlePrintPreBill}
+                    title="In phiếu tạm tính cho khách kiểm tra trước khi tính tiền [F4]"
+                    style={{ height: '34px', fontSize: '0.8rem', fontWeight: 600, padding: '0 0.5rem' }}
+                  >
+                    <Printer size={14} />
+                    Tạm tính
+                  </button>
+                )}
+                <button
+                  id="btn-print-bar"
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={handlePrintBarTicket}
+                  title="In bill pha chế gọn cho Quầy Bar"
+                  style={{ height: '34px', fontSize: '0.8rem', fontWeight: 600, padding: '0 0.5rem' }}
+                >
+                  <Printer size={14} />
+                  In Quầy Bar
+                </button>
+              </div>
             )}
 
             <button
@@ -1618,7 +2005,7 @@ export default function PosPage() {
               className="btn btn-primary btn-lg"
               style={{ width: '100%', height: '42px', fontSize: '0.9375rem', fontWeight: 700 }}
               disabled={orderItems.length === 0}
-              onClick={() => setShowPayment(true)}
+              onClick={openPaymentModal}
               title="Thanh toán đơn hàng [F9]"
             >
               Thanh toán (F9)
@@ -1759,62 +2146,107 @@ export default function PosPage() {
               )
             })()}
 
-            {/* Row 2: Topping */}
+            {/* Row 2: Topping + điều chỉnh số lượng topping (khi SL cốc > 1) */}
             {availableToppings.length > 0 && (
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.85rem', paddingTop: '0.15rem' }}>
                 <span style={{ fontSize: '0.9rem', fontWeight: 700, minWidth: '72px', whiteSpace: 'nowrap', color: 'var(--color-text-secondary)', marginTop: '6px' }}>
                   Topping:
                 </span>
-                <div
-                  style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: '0.55rem',
-                    flex: 1,
-                  }}
-                >
-                  {availableToppings.map((top) => {
-                    const isSelected = selectedToppings.some(
-                      (t) => t.name.toLowerCase() === top.name.toLowerCase()
-                    )
-                    return (
-                      <button
-                        key={top.id}
-                        type="button"
-                        onClick={() => toggleTopping(top)}
-                        style={{
-                          padding: '0.4rem 0.85rem',
-                          borderRadius: 'var(--radius-md)',
-                          border: isSelected
-                            ? '1.5px solid var(--color-coffee-600)'
-                            : '1px solid var(--color-border)',
-                          background: isSelected ? 'var(--color-coffee-600)' : '#ffffff',
-                          color: isSelected ? '#ffffff' : 'var(--color-text-primary)',
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.4rem',
-                          fontSize: '0.85rem',
-                          fontWeight: isSelected ? 700 : 500,
-                          height: '36px',
-                          boxShadow: isSelected ? '0 2px 6px rgba(107, 79, 79, 0.25)' : 'none',
-                          transition: 'all 0.15s ease',
-                        }}
-                      >
-                        <span>{top.name} (+{top.price / 1000}k)</span>
-                        {isSelected && <Check size={14} color="#ffffff" />}
-                      </button>
-                    )
-                  })}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '0.55rem',
+                    }}
+                  >
+                    {availableToppings.map((top) => {
+                      const selectedObj = selectedToppings.find(
+                        (t) => t.name.toLowerCase() === top.name.toLowerCase()
+                      )
+                      const isSelected = Boolean(selectedObj)
+                      return (
+                        <div key={top.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => toggleTopping(top)}
+                            style={{
+                              padding: '0.4rem 0.85rem',
+                              borderRadius: 'var(--radius-md)',
+                              border: isSelected
+                                ? '1.5px solid var(--color-coffee-600)'
+                                : '1px solid var(--color-border)',
+                              background: isSelected ? 'var(--color-coffee-600)' : '#ffffff',
+                              color: isSelected ? '#ffffff' : 'var(--color-text-primary)',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.4rem',
+                              fontSize: '0.85rem',
+                              fontWeight: isSelected ? 700 : 500,
+                              height: '36px',
+                              boxShadow: isSelected ? '0 2px 6px rgba(107, 79, 79, 0.25)' : 'none',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            <span>{top.name} (+{top.price / 1000}k)</span>
+                            {isSelected && <Check size={14} color="#ffffff" />}
+                          </button>
+
+                          {isSelected && selectedObj && editQuantity > 1 && (
+                            <div
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.2rem',
+                                background: '#fdf8f0',
+                                border: '1px solid var(--color-coffee-400)',
+                                borderRadius: 'var(--radius-md)',
+                                padding: '0 0.3rem',
+                                height: '36px',
+                              }}
+                              title={`Số cốc thêm ${top.name} (trên tổng ${editQuantity} cốc)`}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => updateToppingQty(top.name, selectedObj.qty - 1)}
+                                disabled={selectedObj.qty <= 1}
+                                style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '0 4px', fontWeight: 800, color: 'var(--color-coffee-700)', opacity: selectedObj.qty <= 1 ? 0.35 : 1 }}
+                              >
+                                -
+                              </button>
+                              <span style={{ fontSize: '0.8rem', fontWeight: 800, minWidth: '28px', textAlign: 'center', color: 'var(--color-coffee-800)' }}>
+                                {selectedObj.qty}/{editQuantity}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => updateToppingQty(top.name, selectedObj.qty + 1)}
+                                disabled={selectedObj.qty >= editQuantity}
+                                style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '0 4px', fontWeight: 800, color: 'var(--color-coffee-700)', opacity: selectedObj.qty >= editQuantity ? 0.35 : 1 }}
+                              >
+                                +
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                  {editQuantity > 1 && selectedToppings.some((t) => t.qty < editQuantity) && (
+                    <div style={{ fontSize: '0.76rem', color: '#b45309', background: '#fffbeb', padding: '0.3rem 0.6rem', borderRadius: '6px', border: '1px solid #fde68a' }}>
+                      Lưu ý: Khi lưu, hệ thống sẽ tự động tách thành các dòng riêng theo số lượng topping đã chọn.
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
-            {/* Row 3, 4, 5: Đá, Đường, Yêu cầu thêm (Drinks only) */}
+            {/* Row 3, 4, 5: Đá, Đường / Sữa đặc (theo công thức món), Yêu cầu thêm (Drinks only) */}
             {(() => {
               const prod = products.find((p) => p.id === editingOrderItem.product_id)
               const isDrink = isDrinkCategory(prod?.category_id)
               if (!isDrink) return null
+              const { showSugar, showMilk } = getProductSweetenerConfig(editingOrderItem.product_id)
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingTop: '0.15rem' }}>
                   {/* Mức đá */}
@@ -1851,39 +2283,77 @@ export default function PosPage() {
                     </div>
                   </div>
 
-                  {/* Mức đường */}
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.85rem' }}>
-                    <span style={{ fontSize: '0.9rem', fontWeight: 700, minWidth: '72px', whiteSpace: 'nowrap', color: 'var(--color-text-secondary)', marginTop: '6px' }}>
-                      Đường:
-                    </span>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.55rem', flex: 1 }}>
-                      {SUGAR_OPTIONS.map((sugar) => {
-                        const isSelected = selectedSugar === sugar
-                        return (
-                          <button
-                            key={sugar}
-                            type="button"
-                            onClick={() => setSelectedSugar(sugar)}
-                            style={{
-                              padding: '0.4rem 0.85rem',
-                              borderRadius: 'var(--radius-md)',
-                              border: isSelected ? '1.5px solid var(--color-coffee-600)' : '1px solid var(--color-border)',
-                              background: isSelected ? 'var(--color-coffee-600)' : '#ffffff',
-                              color: isSelected ? '#ffffff' : 'var(--color-text-primary)',
-                              fontSize: '0.85rem',
-                              fontWeight: isSelected ? 700 : 500,
-                              height: '36px',
-                              cursor: 'pointer',
-                              boxShadow: isSelected ? '0 2px 6px rgba(107, 79, 79, 0.25)' : 'none',
-                              transition: 'all 0.15s ease',
-                            }}
-                          >
-                            {sugar}
-                          </button>
-                        )
-                      })}
+                  {/* Mức đường (hiển thị nếu món có đường trong công thức hoặc chưa cài công thức) */}
+                  {showSugar && (
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.85rem' }}>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 700, minWidth: '72px', whiteSpace: 'nowrap', color: 'var(--color-text-secondary)', marginTop: '6px' }}>
+                        Đường:
+                      </span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.55rem', flex: 1 }}>
+                        {SUGAR_OPTIONS.map((sugar) => {
+                          const isSelected = selectedSugar === sugar
+                          return (
+                            <button
+                              key={sugar}
+                              type="button"
+                              onClick={() => setSelectedSugar(sugar)}
+                              style={{
+                                padding: '0.4rem 0.85rem',
+                                borderRadius: 'var(--radius-md)',
+                                border: isSelected ? '1.5px solid var(--color-coffee-600)' : '1px solid var(--color-border)',
+                                background: isSelected ? 'var(--color-coffee-600)' : '#ffffff',
+                                color: isSelected ? '#ffffff' : 'var(--color-text-primary)',
+                                fontSize: '0.85rem',
+                                fontWeight: isSelected ? 700 : 500,
+                                height: '36px',
+                                cursor: 'pointer',
+                                boxShadow: isSelected ? '0 2px 6px rgba(107, 79, 79, 0.25)' : 'none',
+                                transition: 'all 0.15s ease',
+                              }}
+                            >
+                              {sugar}
+                            </button>
+                          )
+                        })}
+                      </div>
                     </div>
-                  </div>
+                  )}
+
+                  {/* Mức sữa đặc (hiển thị nếu món có sữa đặc trong công thức) */}
+                  {showMilk && (
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.85rem' }}>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 700, minWidth: '72px', whiteSpace: 'nowrap', color: 'var(--color-text-secondary)', marginTop: '6px' }}>
+                        Sữa đặc:
+                      </span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.55rem', flex: 1 }}>
+                        {MILK_OPTIONS.map((milk) => {
+                          const isSelected = selectedMilk === milk
+                          return (
+                            <button
+                              key={milk}
+                              type="button"
+                              onClick={() => setSelectedMilk(milk)}
+                              style={{
+                                padding: '0.4rem 0.85rem',
+                                borderRadius: 'var(--radius-md)',
+                                border: isSelected ? '1.5px solid var(--color-coffee-600)' : '1px solid var(--color-border)',
+                                background: isSelected ? 'var(--color-coffee-600)' : '#ffffff',
+                                color: isSelected ? '#ffffff' : 'var(--color-text-primary)',
+                                fontSize: '0.85rem',
+                                fontWeight: isSelected ? 700 : 500,
+                                height: '36px',
+                                cursor: 'pointer',
+                                boxShadow: isSelected ? '0 2px 6px rgba(107, 79, 79, 0.25)' : 'none',
+                                transition: 'all 0.15s ease',
+                              }}
+                            >
+                              {milk}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Yêu cầu thêm */}
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.85rem' }}>
@@ -1964,7 +2434,7 @@ export default function PosPage() {
                 <button
                   type="button"
                   className="btn btn-secondary btn-sm"
-                  onClick={() => setEditQuantity(Math.max(1, editQuantity - 1))}
+                  onClick={() => updateEditQuantity(editQuantity - 1)}
                   style={{ width: 34, height: 34, padding: 0 }}
                 >
                   <Minus size={15} />
@@ -1975,7 +2445,7 @@ export default function PosPage() {
                 <button
                   type="button"
                   className="btn btn-secondary btn-sm"
-                  onClick={() => setEditQuantity(editQuantity + 1)}
+                  onClick={() => updateEditQuantity(editQuantity + 1)}
                   style={{ width: 34, height: 34, padding: 0 }}
                 >
                   <Plus size={15} />
@@ -1986,7 +2456,14 @@ export default function PosPage() {
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
                 <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Tổng thanh toán:</span>
                 <span style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-coffee-700)' }}>
-                  {formatCurrency(editUnitPrice * editQuantity)}
+                  {(() => {
+                    const fullToppingSum = selectedToppings.reduce((s, t) => s + t.price, 0)
+                    const effectiveBase = Math.max(0, editUnitPrice - fullToppingSum)
+                    const totalPreview =
+                      effectiveBase * editQuantity +
+                      selectedToppings.reduce((s, t) => s + t.price * t.qty, 0)
+                    return formatCurrency(totalPreview)
+                  })()}
                 </span>
               </div>
 
@@ -2014,41 +2491,405 @@ export default function PosPage() {
         )}
       </Modal>
 
-      {/* Payment Modal */}
-      <Modal open={showPayment} onClose={() => setShowPayment(false)} title="Chọn phương thức thanh toán">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1rem' }}>
-          <div
-            style={{
-              textAlign: 'center',
-              padding: '1rem',
-              background: 'var(--color-surface)',
-              borderRadius: 'var(--radius-lg)',
-              border: '1px solid var(--color-border)',
-            }}
-          >
-            <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem' }}>Tổng thanh toán</div>
-            <div className="stat-value">{formatCurrency(total)}</div>
+      {/* Payment & Split Bill Modal */}
+      <Modal
+        open={showPayment}
+        onClose={() => setShowPayment(false)}
+        wide={payTab === 'SPLIT'}
+        title={payTab === 'SPLIT' ? 'Tách bill & Thanh toán từng phần' : 'Thanh toán hóa đơn'}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', marginBottom: '0.5rem' }}>
+          {/* Tab chuyển: Toàn bộ vs Tách bill */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', background: '#f1f5f9', padding: '0.3rem', borderRadius: 'var(--radius-md)' }}>
+            <button
+              type="button"
+              className={`btn btn-sm ${payTab === 'FULL' ? 'btn-primary' : 'btn-ghost'}`}
+              onClick={() => setPayTab('FULL')}
+            >
+              Thanh toán toàn bộ
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm ${payTab === 'SPLIT' ? 'btn-primary' : 'btn-ghost'}`}
+              onClick={() => setPayTab('SPLIT')}
+            >
+              Tách bill / Trả từng phần
+            </button>
           </div>
 
-          <button
-            className="btn btn-primary btn-lg"
-            disabled={paying}
-            onClick={() => handlePay('CASH')}
-            style={{ width: '100%' }}
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              fontSize: '0.84rem',
+              padding: '0.45rem 0.75rem',
+              borderRadius: 'var(--radius-md)',
+              background: printCustomerBill ? '#fdf8f0' : '#f8fafc',
+              border: `1px solid ${printCustomerBill ? 'var(--color-coffee-400)' : 'var(--color-border-light)'}`,
+              cursor: 'pointer',
+              fontWeight: printCustomerBill ? 700 : 500,
+              color: printCustomerBill ? 'var(--color-coffee-800)' : 'var(--color-text-secondary)',
+            }}
           >
-            <Banknote size={20} />
-            {paying ? 'Đang xử lý...' : 'Tiền mặt'}
-          </button>
+            <input
+              type="checkbox"
+              checked={printCustomerBill}
+              onChange={(e) => setPrintCustomerBill(e.target.checked)}
+              style={{ width: 16, height: 16, accentColor: 'var(--color-coffee-600)', cursor: 'pointer' }}
+            />
+            <span>In thêm bill chi tiết đưa khách (mặc định chỉ in Quầy Bar)</span>
+          </label>
 
-          <button
-            className="btn btn-secondary btn-lg"
-            disabled={paying}
-            onClick={() => handlePay('BANK_TRANSFER')}
-            style={{ width: '100%' }}
-          >
-            <CreditCard size={20} />
-            {paying ? 'Đang xử lý...' : 'Chuyển khoản'}
-          </button>
+          {payTab === 'FULL' ? (
+            <>
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: '0.875rem',
+                  background: 'var(--color-surface)',
+                  borderRadius: 'var(--radius-lg)',
+                  border: '1px solid var(--color-border)',
+                }}
+              >
+                <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '0.2rem' }}>Tổng thanh toán</div>
+                <div className="stat-value">{formatCurrency(total)}</div>
+              </div>
+
+              <button
+                className="btn btn-primary btn-lg"
+                disabled={paying}
+                onClick={() => handlePay('CASH')}
+                style={{ width: '100%' }}
+              >
+                <Banknote size={20} />
+                {paying ? 'Đang xử lý...' : 'Tiền mặt'}
+              </button>
+
+              <button
+                className="btn btn-secondary btn-lg"
+                disabled={paying}
+                onClick={() => handlePay('BANK_TRANSFER')}
+                style={{ width: '100%' }}
+              >
+                <CreditCard size={20} />
+                {paying ? 'Đang xử lý...' : 'Chuyển khoản'}
+              </button>
+
+              <button
+                type="button"
+                className={`btn btn-lg ${showMixedFull ? 'btn-primary' : 'btn-secondary'}`}
+                disabled={paying}
+                onClick={() => {
+                  const next = !showMixedFull
+                  setShowMixedFull(next)
+                  if (next) {
+                    setMixedCash(0)
+                    setMixedBank(total)
+                  }
+                }}
+                style={{ width: '100%' }}
+              >
+                Kết hợp (Tiền mặt + Chuyển khoản)
+              </button>
+
+              {showMixedFull && (
+                <div style={{ padding: '0.875rem', background: '#fdf8f0', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-coffee-300)', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
+                    <div>
+                      <label className="input-label" style={{ fontSize: '0.78rem', fontWeight: 700, color: '#0f172a' }}>Tiền mặt (đ)</label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        className="input"
+                        placeholder="Nhập tiền mặt..."
+                        value={mixedCash > 0 ? mixedCash.toLocaleString('en-US') : ''}
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/\D/g, '')
+                          const v = Math.min(total, Number(raw) || 0)
+                          setMixedCash(v)
+                          setMixedBank(Math.max(0, total - v))
+                        }}
+                        style={{
+                          color: '#0f172a',
+                          caretColor: '#0f172a',
+                          backgroundColor: '#ffffff',
+                          fontWeight: 700,
+                          fontSize: '0.95rem',
+                          cursor: 'text',
+                        }}
+                        autoFocus
+                      />
+                    </div>
+                    <div>
+                      <label className="input-label" style={{ fontSize: '0.78rem', fontWeight: 700, color: '#0f172a' }}>Chuyển khoản (đ)</label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        className="input"
+                        placeholder="Tự tính hoặc nhập..."
+                        value={mixedBank > 0 ? mixedBank.toLocaleString('en-US') : ''}
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/\D/g, '')
+                          const v = Math.min(total, Number(raw) || 0)
+                          setMixedBank(v)
+                          setMixedCash(Math.max(0, total - v))
+                        }}
+                        style={{
+                          color: '#0f172a',
+                          caretColor: '#0f172a',
+                          backgroundColor: '#ffffff',
+                          fontWeight: 700,
+                          fontSize: '0.95rem',
+                          cursor: 'text',
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={paying || mixedCash + mixedBank !== total}
+                    onClick={handlePayMixedFull}
+                    style={{ width: '100%' }}
+                  >
+                    {paying ? 'Đang xử lý...' : `Xác nhận thu ${formatCurrency(total)}`}
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            (() => {
+              const splitSubtotal = orderItems.reduce((sum, it) => sum + (splitSelections[it.id] || 0) * it.unit_price, 0)
+              const splitDisc = Math.min(splitSubtotal, Math.max(0, Number(splitDiscount) || 0))
+              const splitTotal = Math.max(0, splitSubtotal - splitDisc)
+              const remainingOnTable = Math.max(0, subtotal - splitSubtotal)
+              const hasAnySelected = Object.values(splitSelections).some((q) => q > 0)
+
+              return (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                    <span>Tích chọn món &amp; số lượng khách trả trong lượt này:</span>
+                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
+                        onClick={() => {
+                          const all: Record<string, number> = {}
+                          orderItems.forEach((it) => { all[it.id] = it.quantity })
+                          setSplitSelections(all)
+                        }}
+                      >
+                        Chọn tất cả
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
+                        onClick={() => setSplitSelections({})}
+                      >
+                        Bỏ chọn
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ maxHeight: '230px', overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}>
+                    {orderItems.map((it) => {
+                      const selQty = splitSelections[it.id] || 0
+                      const isChecked = selQty > 0
+                      return (
+                        <div
+                          key={it.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '0.65rem',
+                            padding: '0.55rem 0.75rem',
+                            borderBottom: '1px solid var(--color-border-light)',
+                            background: isChecked ? '#fdf8f0' : '#ffffff',
+                          }}
+                        >
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', cursor: 'pointer', flex: 1 }}>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                setSplitSelections((prev) => ({
+                                  ...prev,
+                                  [it.id]: e.target.checked ? it.quantity : 0,
+                                }))
+                              }}
+                              style={{ width: 17, height: 17, accentColor: 'var(--color-coffee-600)', cursor: 'pointer' }}
+                            />
+                            <div>
+                              <div style={{ fontWeight: 600, fontSize: '0.86rem' }}>
+                                {it.product_name} <span style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>({formatCurrency(it.unit_price)})</span>
+                              </div>
+                              {it.note && <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>{it.note}</div>}
+                            </div>
+                          </label>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            {isChecked ? (
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', border: '1px solid var(--color-coffee-400)', borderRadius: '6px', padding: '0 0.25rem', background: '#fff' }}>
+                                <button
+                                  type="button"
+                                  className="btn btn-ghost btn-sm"
+                                  style={{ padding: '0.15rem 0.35rem', fontWeight: 700 }}
+                                  onClick={() => setSplitSelections((prev) => ({ ...prev, [it.id]: Math.max(0, selQty - 1) }))}
+                                >
+                                  -
+                                </button>
+                                <span style={{ fontSize: '0.82rem', fontWeight: 800, minWidth: '32px', textAlign: 'center' }}>
+                                  {selQty}/{it.quantity}
+                                </span>
+                                <button
+                                  type="button"
+                                  className="btn btn-ghost btn-sm"
+                                  style={{ padding: '0.15rem 0.35rem', fontWeight: 700 }}
+                                  disabled={selQty >= it.quantity}
+                                  onClick={() => setSplitSelections((prev) => ({ ...prev, [it.id]: Math.min(it.quantity, selQty + 1) }))}
+                                >
+                                  +
+                                </button>
+                              </div>
+                            ) : (
+                              <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>SL: {it.quantity}</span>
+                            )}
+                            <strong style={{ minWidth: '72px', textAlign: 'right', fontSize: '0.85rem' }}>
+                              {formatCurrency((isChecked ? selQty : it.quantity) * it.unit_price)}
+                            </strong>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* Tóm tắt phần tách & giảm giá nếu có */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.75rem', alignItems: 'center', padding: '0.75rem', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                    <div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                        Phần chọn lần này: <strong style={{ color: 'var(--color-coffee-700)', fontSize: '1.05rem' }}>{formatCurrency(splitTotal)}</strong>
+                      </div>
+                      <div style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}>
+                        Còn lại trên bàn sau khi tách: <strong>{formatCurrency(remainingOnTable)}</strong>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)' }}>Giảm giá phần này:</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={splitSubtotal}
+                        className="input"
+                        value={splitDiscount || ''}
+                        onChange={(e) => setSplitDiscount(Math.max(0, Number(e.target.value) || 0))}
+                        placeholder="0"
+                        style={{ width: 95, padding: '0.3rem 0.5rem', textAlign: 'right', fontSize: '0.82rem' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Chọn hình thức thanh toán cho phần tách */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+                    <button
+                      type="button"
+                      className={`btn btn-sm ${splitMethod === 'CASH' ? 'btn-primary' : 'btn-secondary'}`}
+                      onClick={() => setSplitMethod('CASH')}
+                    >
+                      Tiền mặt
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn btn-sm ${splitMethod === 'BANK_TRANSFER' ? 'btn-primary' : 'btn-secondary'}`}
+                      onClick={() => setSplitMethod('BANK_TRANSFER')}
+                    >
+                      Chuyển khoản
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn btn-sm ${splitMethod === 'MIXED' ? 'btn-primary' : 'btn-secondary'}`}
+                      onClick={() => {
+                        setSplitMethod('MIXED')
+                        setSplitMixedCash(0)
+                        setSplitMixedBank(splitTotal)
+                      }}
+                    >
+                      Kết hợp TM+CK
+                    </button>
+                  </div>
+
+                  {splitMethod === 'MIXED' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem', padding: '0.65rem', background: '#fdf8f0', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-coffee-300)' }}>
+                      <div>
+                        <label className="input-label" style={{ fontSize: '0.75rem', fontWeight: 700, color: '#0f172a' }}>Tiền mặt (đ)</label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          className="input"
+                          placeholder="Nhập tiền mặt..."
+                          value={splitMixedCash > 0 ? splitMixedCash.toLocaleString('en-US') : ''}
+                          onChange={(e) => {
+                            const raw = e.target.value.replace(/\D/g, '')
+                            const v = Math.min(splitTotal, Number(raw) || 0)
+                            setSplitMixedCash(v)
+                            setSplitMixedBank(Math.max(0, splitTotal - v))
+                          }}
+                          style={{
+                            color: '#0f172a',
+                            caretColor: '#0f172a',
+                            backgroundColor: '#ffffff',
+                            fontWeight: 700,
+                            fontSize: '0.92rem',
+                            cursor: 'text',
+                          }}
+                          autoFocus
+                        />
+                      </div>
+                      <div>
+                        <label className="input-label" style={{ fontSize: '0.75rem', fontWeight: 700, color: '#0f172a' }}>Chuyển khoản (đ)</label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          className="input"
+                          placeholder="Tự tính hoặc nhập..."
+                          value={splitMixedBank > 0 ? splitMixedBank.toLocaleString('en-US') : ''}
+                          onChange={(e) => {
+                            const raw = e.target.value.replace(/\D/g, '')
+                            const v = Math.min(splitTotal, Number(raw) || 0)
+                            setSplitMixedBank(v)
+                            setSplitMixedCash(Math.max(0, splitTotal - v))
+                          }}
+                          style={{
+                            color: '#0f172a',
+                            caretColor: '#0f172a',
+                            backgroundColor: '#ffffff',
+                            fontWeight: 700,
+                            fontSize: '0.92rem',
+                            cursor: 'text',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-lg"
+                    disabled={paying || !hasAnySelected}
+                    onClick={handleSplitAndPay}
+                    style={{ width: '100%' }}
+                  >
+                    {paying
+                      ? 'Đang tách & thanh toán...'
+                      : `Thanh toán & In bill phần này (${formatCurrency(splitTotal)})`}
+                  </button>
+                </>
+              )
+            })()
+          )}
         </div>
       </Modal>
     </div>

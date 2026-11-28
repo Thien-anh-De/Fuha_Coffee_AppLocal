@@ -70,6 +70,7 @@ export interface Order {
   cashier?: Profile
   items?: OrderItem[]
   payment?: Payment
+  payments?: Payment[]
 }
 
 // ── Order Items ───────────────────────────────────────────────
@@ -90,7 +91,7 @@ export type PaymentMethod = 'CASH' | 'BANK_TRANSFER'
 export interface Payment {
   id: string
   order_id: string
-  method: PaymentMethod
+  method: PaymentMethod | 'MIXED'
   amount: number
   paid_at: string
   cashier_id: string

@@ -7,6 +7,10 @@ export interface PrinterSettings {
   paperSize: 'K80' | 'K58'
   fontScale?: 'compact' | 'standard' | 'large'
   receiptStyle?: 'default' | 'update_v1'
+  autoPrintTarget?: 'BAR_ONLY' | 'CUSTOMER_AND_BAR' | 'CUSTOMER_ONLY'
+  printPickupSlip?: boolean
+  invoiceNumberMode?: boolean
+  barPrintCompact?: boolean
   shopName: string
   shopAddress: string
   shopPhone: string
@@ -21,6 +25,10 @@ export const DEFAULT_PRINTER_SETTINGS: PrinterSettings = {
   paperSize: 'K80',
   fontScale: 'standard',
   receiptStyle: 'default',
+  autoPrintTarget: 'BAR_ONLY',
+  printPickupSlip: false,
+  invoiceNumberMode: false,
+  barPrintCompact: true,
   shopName: 'FUHA CAFE',
   shopAddress: 'Trường ĐH Hà Nội, Km9 Nguyễn Trãi, Đại Mỗ',
   shopPhone: '0985162004',

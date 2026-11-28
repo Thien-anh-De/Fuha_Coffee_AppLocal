@@ -53,6 +53,124 @@ export function MaterialsSummaryTab({
   const [wasteReasonId, setWasteReasonId] = useState('')
   const [wasteNote, setWasteNote] = useState('')
 
+  // Modal chi tiết các món sử dụng 1 nguyên liệu cụ thể
+  const [selectedMatDetail, setSelectedMatDetail] = useState<{
+    material_id: string
+    material_name: string
+    unit: string
+    mode: 'RAW' | 'DIRECT'
+    sale_qty: number
+    extra_wastage_qty: number
+    total_qty: number
+    total_cost: number
+    products: { product_name: string; sold_qty: number; material_qty: number; cost: number }[]
+  } | null>(null)
+
+  const handleOpenMaterialDetail = (
+    mat: {
+      material_id: string
+      material_name: string
+      unit: string
+      sale_qty?: number
+      extra_wastage_qty?: number
+      total_qty: number
+      total_cost?: number
+    },
+    mode: 'RAW' | 'DIRECT'
+  ) => {
+    if (!data) return
+    const productsList: { product_name: string; sold_qty: number; material_qty: number; cost: number }[] = []
+    for (const sp of data.sold_products) {
+      if (!sp.has_recipe) continue
+      if (mode === 'RAW') {
+        const found = (sp.raw_materials || []).find((rm) => rm.material_id === mat.material_id)
+        if (found && found.quantity > 0) {
+          productsList.push({
+            product_name: sp.product_name,
+            sold_qty: sp.quantity,
+            material_qty: found.quantity,
+            cost: found.cost_amount || 0,
+          })
+        }
+      } else {
+        const found = (sp.direct_materials || []).find((dm) => dm.material_id === mat.material_id)
+        if (found && found.quantity > 0) {
+          productsList.push({
+            product_name: sp.product_name,
+            sold_qty: sp.quantity,
+            material_qty: found.quantity,
+            cost: 0,
+          })
+        }
+      }
+    }
+    productsList.sort((a, b) => b.material_qty - a.material_qty)
+    setSelectedMatDetail({
+      material_id: mat.material_id,
+      material_name: mat.material_name,
+      unit: mat.unit,
+      mode,
+      sale_qty: mat.sale_qty ?? mat.total_qty,
+      extra_wastage_qty: mat.extra_wastage_qty ?? 0,
+      total_qty: mat.total_qty,
+      total_cost: mat.total_cost ?? 0,
+      products: productsList,
+    })
+  }
+
+  const handleExportMaterialDetailCsv = () => {
+    if (!selectedMatDetail) return
+    const headers = ['Tên món', 'Số cốc/phần bán', `TB / 1 phần (${selectedMatDetail.unit})`, `Tổng tiêu hao (${selectedMatDetail.unit})`, 'Tỷ lệ (%)', 'Chi phí (VNĐ)']
+    const denom = selectedMatDetail.sale_qty > 0 ? selectedMatDetail.sale_qty : 1
+    const rows = selectedMatDetail.products.map((p) => [
+      p.product_name,
+      p.sold_qty,
+      p.sold_qty > 0 ? Math.round((p.material_qty / p.sold_qty) * 100) / 100 : 0,
+      p.material_qty,
+      `${Math.round((p.material_qty / denom) * 1000) / 10}%`,
+      p.cost,
+    ])
+    exportReportToCsv(
+      `Chi-tiet-${selectedMatDetail.material_name}-${dateFrom}-${dateTo}`,
+      `CHI TIẾT MÓN DÙNG NGUYÊN LIỆU: ${selectedMatDetail.material_name.toUpperCase()}`,
+      `Từ ${dateFrom} đến ${dateTo} — Tổng theo đơn bán: ${formatQty(selectedMatDetail.sale_qty)} ${selectedMatDetail.unit}`,
+      headers,
+      rows,
+      ['TỔNG THEO ĐƠN BÁN', '-', '-', selectedMatDetail.sale_qty, '100%', selectedMatDetail.total_cost]
+    )
+    onSuccess(`Đã xuất CSV chi tiết "${selectedMatDetail.material_name}"`)
+  }
+
+  const handleExportMaterialDetailPdf = async () => {
+    if (!selectedMatDetail) return
+    const headers = ['Tên món', 'SL bán', `TB / phần`, `Tổng dùng (${selectedMatDetail.unit})`, 'Tỷ lệ', 'Chi phí']
+    const denom = selectedMatDetail.sale_qty > 0 ? selectedMatDetail.sale_qty : 1
+    const rows = selectedMatDetail.products.map((p) => [
+      p.product_name,
+      p.sold_qty,
+      p.sold_qty > 0 ? `${formatQty(p.material_qty / p.sold_qty)} ${selectedMatDetail.unit}` : '0',
+      `${formatQty(p.material_qty)} ${selectedMatDetail.unit}`,
+      `${Math.round((p.material_qty / denom) * 1000) / 10}%`,
+      p.cost > 0 ? formatCurrency(p.cost) : '—',
+    ])
+    const res = await exportToPdf(
+      `Chi-tiet-${selectedMatDetail.material_name}-${dateFrom}-${dateTo}`,
+      `CHI TIẾT MÓN DÙNG: ${selectedMatDetail.material_name.toUpperCase()}`,
+      `Từ ${dateFrom} đến ${dateTo} — Tổng theo đơn bán: ${formatQty(selectedMatDetail.sale_qty)} ${selectedMatDetail.unit}`,
+      headers,
+      rows,
+      [
+        'TỔNG CỘNG',
+        '-',
+        '-',
+        `${formatQty(selectedMatDetail.sale_qty)} ${selectedMatDetail.unit}`,
+        '100%',
+        selectedMatDetail.total_cost > 0 ? formatCurrency(selectedMatDetail.total_cost) : '—',
+      ]
+    )
+    if (res.success) onSuccess(`Đã xuất PDF chi tiết "${selectedMatDetail.material_name}"`)
+  }
+
   const loadSummary = useCallback(async () => {
     if (!dateFrom || !dateTo) return
     setLoading(true)
@@ -338,7 +456,7 @@ export function MaterialsSummaryTab({
                   Tổng kết Nguyên liệu gốc đã dùng hết
                 </h3>
                 <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
-                  Tự động quy đổi qua các bước pha sẵn / ủ phin trung gian để ra tổng lượng nguyên liệu gốc thực tế đã dùng.
+                  Tự động quy đổi qua các bước pha sẵn / ủ phin trung gian. <strong>Bấm vào từng nguyên liệu để xem &amp; in chi tiết các món sử dụng.</strong>
                 </p>
               </div>
             </div>
@@ -363,8 +481,15 @@ export function MaterialsSummaryTab({
                     </tr>
                   ) : (
                     data.raw_consumption.map((r) => (
-                      <tr key={r.material_id}>
-                        <td style={{ fontWeight: 600 }}>{r.material_name}</td>
+                      <tr
+                        key={r.material_id}
+                        onClick={() => handleOpenMaterialDetail(r, 'RAW')}
+                        style={{ cursor: 'pointer' }}
+                        title="Bấm để xem & in danh sách các món sử dụng nguyên liệu này"
+                      >
+                        <td style={{ fontWeight: 600, color: 'var(--color-coffee-700)', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: '3px' }}>
+                          {r.material_name}
+                        </td>
                         <td>{r.unit}</td>
                         <td style={{ textAlign: 'right' }}>{formatQty(r.sale_qty)} {r.unit}</td>
                         <td style={{ textAlign: 'right', color: r.extra_wastage_qty > 0 ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
@@ -402,13 +527,20 @@ export function MaterialsSummaryTab({
                   <th style={{ textAlign: 'right' }}>Tổng lượng</th>
                 </tr>
               </thead>
-              <tbody>
+                <tbody>
                 {data.direct_consumption.length === 0 ? (
                   <tr><td colSpan={3} style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>Chưa có dữ liệu</td></tr>
                 ) : (
                   data.direct_consumption.map((d) => (
-                    <tr key={d.material_id}>
-                      <td style={{ fontWeight: 600 }}>{d.material_name}</td>
+                    <tr
+                      key={d.material_id}
+                      onClick={() => handleOpenMaterialDetail(d, 'DIRECT')}
+                      style={{ cursor: 'pointer' }}
+                      title="Bấm để xem & in danh sách các món sử dụng thành phần này"
+                    >
+                      <td style={{ fontWeight: 600, color: 'var(--color-coffee-700)', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: '3px' }}>
+                        {d.material_name}
+                      </td>
                       <td>
                         <span className={`badge ${d.material_type === 'SEMI_FINISHED' ? 'badge-warning' : 'badge-coffee'}`}>
                           {d.material_type === 'SEMI_FINISHED' ? 'Trung gian' : 'Gốc'}
@@ -587,6 +719,120 @@ export function MaterialsSummaryTab({
             <button type="button" className="btn btn-primary" onClick={handleSaveWaste}>Lưu ghi nhận</button>
           </div>
         </div>
+      </Modal>
+
+      {/* Modal chi tiết các món sử dụng nguyên liệu được chọn */}
+      <Modal
+        open={Boolean(selectedMatDetail)}
+        onClose={() => setSelectedMatDetail(null)}
+        wide
+        title={selectedMatDetail ? `Chi tiết món sử dụng: ${selectedMatDetail.material_name}` : ''}
+      >
+        {selectedMatDetail && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.75rem', padding: '0.75rem', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Dùng theo đơn bán</div>
+                <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#15803d' }}>
+                  {formatQty(selectedMatDetail.sale_qty)} {selectedMatDetail.unit}
+                </div>
+              </div>
+              {selectedMatDetail.extra_wastage_qty > 0 && (
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Hao hụt thêm</div>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--color-danger)' }}>
+                    +{formatQty(selectedMatDetail.extra_wastage_qty)} {selectedMatDetail.unit}
+                  </div>
+                </div>
+              )}
+              <div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Tổng đã dùng</div>
+                <div style={{ fontSize: '1.05rem', fontWeight: 800 }}>
+                  {formatQty(selectedMatDetail.total_qty)} {selectedMatDetail.unit}
+                </div>
+              </div>
+              {selectedMatDetail.total_cost > 0 && (
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Chi phí ước tính</div>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--color-coffee-700)' }}>
+                    {formatCurrency(selectedMatDetail.total_cost)}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div style={{ maxHeight: '340px', overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Tên món</th>
+                    <th style={{ textAlign: 'right' }}>Đã bán</th>
+                    <th style={{ textAlign: 'right' }}>TB / 1 phần</th>
+                    <th style={{ textAlign: 'right' }}>Tổng tiêu hao</th>
+                    <th style={{ textAlign: 'right' }}>Tỷ lệ</th>
+                    {selectedMatDetail.mode === 'RAW' && <th style={{ textAlign: 'right' }}>Chi phí</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedMatDetail.products.length === 0 ? (
+                    <tr>
+                      <td colSpan={selectedMatDetail.mode === 'RAW' ? 6 : 5} style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '1.5rem' }}>
+                        Không có món bán nào dùng nguyên liệu này trong kỳ (có thể chỉ ghi nhận hao hụt thêm ngoài đơn).
+                      </td>
+                    </tr>
+                  ) : (
+                    selectedMatDetail.products.map((p, idx) => {
+                      const pct = selectedMatDetail.sale_qty > 0 ? Math.round((p.material_qty / selectedMatDetail.sale_qty) * 1000) / 10 : 0
+                      const avgPerCup = p.sold_qty > 0 ? p.material_qty / p.sold_qty : 0
+                      return (
+                        <tr key={idx}>
+                          <td style={{ fontWeight: 600 }}>{p.product_name}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 600 }}>{p.sold_qty}</td>
+                          <td style={{ textAlign: 'right', color: 'var(--color-text-secondary)', fontSize: '0.84rem' }}>
+                            {formatQty(avgPerCup)} {selectedMatDetail.unit}
+                          </td>
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: '#15803d' }}>
+                            {formatQty(p.material_qty)} {selectedMatDetail.unit}
+                          </td>
+                          <td style={{ textAlign: 'right', color: 'var(--color-text-muted)', fontSize: '0.82rem' }}>{pct}%</td>
+                          {selectedMatDetail.mode === 'RAW' && (
+                            <td style={{ textAlign: 'right', color: 'var(--color-text-secondary)' }}>
+                              {p.cost > 0 ? formatCurrency(p.cost) : '—'}
+                            </td>
+                          )}
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={handleExportMaterialDetailCsv}
+                  disabled={selectedMatDetail.products.length === 0}
+                >
+                  <FileSpreadsheet size={14} /> Xuất CSV
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={handleExportMaterialDetailPdf}
+                  disabled={selectedMatDetail.products.length === 0}
+                >
+                  <FileText size={14} /> In / Xuất PDF
+                </button>
+              </div>
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => setSelectedMatDetail(null)}>
+                Đóng
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   )

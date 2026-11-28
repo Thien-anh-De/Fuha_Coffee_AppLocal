@@ -153,6 +153,7 @@ export default function InvoicesPage() {
       discount: order.discount,
       total: order.total,
       payment_method: order.payment?.method ?? (order.status === 'PAID' ? 'CASH' : undefined),
+      payments: order.payments?.map((p) => ({ method: p.method, amount: p.amount })),
     }
     printReceipt(printable, undefined, order.status !== 'PAID')
     success(`Đã gửi lệnh in hóa đơn ${order.invoice_number}`)

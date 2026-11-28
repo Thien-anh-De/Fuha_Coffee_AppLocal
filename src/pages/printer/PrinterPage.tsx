@@ -7,7 +7,11 @@ import {
 } from '@/services/printerService'
 import {
   printReceipt,
+  printBarTicket,
+  printPickupSlip,
   generateReceiptHtml,
+  generateBarReceiptHtml,
+  generatePickupSlipHtml,
   SAMPLE_PRINT_ORDER,
 } from '@/utils/printer'
 import { ToastContainer } from '@/components/ui'
@@ -26,6 +30,7 @@ export default function PrinterPage() {
   const [settings, setSettings] = useState<PrinterSettings>(
     DEFAULT_PRINTER_SETTINGS
   )
+  const [previewMode, setPreviewMode] = useState<'CUSTOMER' | 'BAR' | 'PICKUP'>('BAR')
 
   useEffect(() => {
     setSettings(printerService.getSettings())
@@ -43,10 +48,21 @@ export default function PrinterPage() {
   }
 
   const handleTestPrint = () => {
-    printReceipt(SAMPLE_PRINT_ORDER, settings, false)
+    if (previewMode === 'BAR') {
+      printBarTicket(SAMPLE_PRINT_ORDER, settings)
+    } else if (previewMode === 'PICKUP') {
+      printPickupSlip(SAMPLE_PRINT_ORDER, settings)
+    } else {
+      printReceipt(SAMPLE_PRINT_ORDER, settings, false)
+    }
   }
 
-  const previewHtml = generateReceiptHtml(SAMPLE_PRINT_ORDER, settings, false)
+  const previewHtml =
+    previewMode === 'BAR'
+      ? generateBarReceiptHtml(SAMPLE_PRINT_ORDER, settings)
+      : previewMode === 'PICKUP'
+      ? generatePickupSlipHtml(SAMPLE_PRINT_ORDER, settings)
+      : generateReceiptHtml(SAMPLE_PRINT_ORDER, settings, false)
 
   return (
     <div className="animate-fade-in" style={{ maxWidth: 1200, margin: '0 auto' }}>
@@ -208,16 +224,52 @@ export default function PrinterPage() {
                 <span>Cho phép in phiếu tạm tính tại bàn trước khi thanh toán</span>
               </label>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid var(--color-border-light)' }}>
-                <span style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Số liên in mỗi đơn:</span>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                <input
+                  type="checkbox"
+                  checked={Boolean(settings.printPickupSlip)}
+                  onChange={(e) => setSettings({ ...settings, printPickupSlip: e.target.checked })}
+                  style={{ width: 16, height: 16, accentColor: 'var(--color-coffee-600)', cursor: 'pointer' }}
+                />
+                <span>In thêm Phiếu Mã hóa đơn mini khi thanh toán (thay thế thẻ bàn)</span>
+              </label>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                <input
+                  type="checkbox"
+                  checked={Boolean(settings.invoiceNumberMode)}
+                  onChange={(e) => setSettings({ ...settings, invoiceNumberMode: e.target.checked })}
+                  style={{ width: 16, height: 16, accentColor: 'var(--color-coffee-600)', cursor: 'pointer' }}
+                />
+                <span>Chế độ in Mã hóa đơn lớn trên bill (thay số bàn, vẫn tiết kiệm giấy)</span>
+              </label>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                <input
+                  type="checkbox"
+                  checked={settings.barPrintCompact !== false}
+                  onChange={(e) => setSettings({ ...settings, barPrintCompact: e.target.checked })}
+                  style={{ width: 16, height: 16, accentColor: 'var(--color-coffee-600)', cursor: 'pointer' }}
+                />
+                <span>Bill Quầy pha chế (Bar) in gọn tiết kiệm giấy &amp; ẩn giá topping</span>
+              </label>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid var(--color-border-light)', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Khi thanh toán tự động in:</span>
                 <select
                   className="select"
-                  value={settings.numberOfCopies}
-                  onChange={(e) => setSettings({ ...settings, numberOfCopies: Number(e.target.value) || 1 })}
+                  value={settings.autoPrintTarget || 'BAR_ONLY'}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      autoPrintTarget: e.target.value as PrinterSettings['autoPrintTarget'],
+                    })
+                  }
                   style={{ width: 'auto', padding: '0.375rem 2rem 0.375rem 0.75rem', fontSize: '0.8125rem' }}
                 >
-                  <option value={1}>1 liên (Giao khách)</option>
-                  <option value={2}>2 liên (Khách + Pha chế)</option>
+                  <option value="BAR_ONLY">Chỉ in Bill Quầy Bar (Tiết kiệm giấy)</option>
+                  <option value="CUSTOMER_AND_BAR">In cả Bill Khách + Quầy Bar</option>
+                  <option value="CUSTOMER_ONLY">Chỉ in Bill Khách hàng</option>
                 </select>
               </div>
             </div>
@@ -302,7 +354,7 @@ export default function PrinterPage() {
         {/* RIGHT: Live Receipt Preview & Test Print */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div className="glass-card" style={{ padding: '1.25rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Receipt size={18} color="var(--color-coffee-600)" />
                 <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>
@@ -322,6 +374,30 @@ export default function PrinterPage() {
                   <span className="badge badge-warning">update v1</span>
                 )}
               </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.45rem', marginBottom: '0.875rem' }}>
+              <button
+                type="button"
+                className={`btn btn-sm ${previewMode === 'BAR' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setPreviewMode('BAR')}
+              >
+                Bill Quầy Bar
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${previewMode === 'PICKUP' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setPreviewMode('PICKUP')}
+              >
+                Phiếu Mã HĐ
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${previewMode === 'CUSTOMER' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setPreviewMode('CUSTOMER')}
+              >
+                Bill Khách hàng
+              </button>
             </div>
 
             {/* Simulated Thermal Paper Mockup */}
